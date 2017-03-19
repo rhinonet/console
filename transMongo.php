@@ -5,6 +5,14 @@ $s2 = "select id from testa where a = 1 group by a";
 $i1 = "insert into testa ( a, b, c ) value (1,2,3)";
 $d1 = "delete from testa where a = 1 and b = 12 or b = 13 and c in (1,2,3) and d between 1 and 2";
 
+function replace_between_and($arr){
+    $key = isset($arr[1]) ? $arr[1] : ''; 
+    $begin = isset($arr[2]) ? $arr[2] : '';
+    $end = isset($arr[3]) ? $arr[3] : '';
+
+    return trim($key) . '^' . trim($begin) . '-' . trim($end);
+}
+
 class transMongo{
     private $sql = '';
 
@@ -42,11 +50,17 @@ class transMongo{
     public function format_delete_sql($sql){
         $sql = preg_replace('/\s+/', ' ', $sql);
         $sql = preg_replace('/\s*=\s*/', '=', $sql);
+        $sql = preg_replace('/\s*>\s*/', '>', $sql );
+        $sql = preg_replace('/\s*>=\s*/', '>=', $sql );
+        $sql = preg_replace('/\s*<\s*/', '<', $sql );
+        $sql = preg_replace('/\s*<=\s*/', '<=', $sql );
+        $sql = preg_replace('/\s*!=\s*/', '!=', $sql );
+
+        $sql = preg_replace_callback('/[\s]+([\w]+)[\s]+between([\w\s]+)and([\w\s]+)/', "replace_between_and", $sql);
         $sql = preg_replace('/\s*and\s*/', $this->delete_split['and'], $sql);
         $sql = preg_replace('/\s*or\s*/',  $this->delete_split['or'], $sql);
         $sql = preg_replace('/\s*not\s+in\s*/',  $this->delete_split['nin'], $sql);
         $sql = preg_replace('/\s*in\s*/',  $this->delete_split['in'], $sql);
-        $sql = preg_replace('/\s*between\s*/',  $this->delete_split['between'], $sql);
         return trim($sql);
     }
 
@@ -58,23 +72,84 @@ class transMongo{
     }
 
     public function combine_condition($condition){
-        //var_dump($condition);exit;
         if(!$condition){
             $this->error('delete conditon error line:' . __LINE__);
         }
         $co = [];
-        /*
-        $tmp_arr = explode(',', $condition);
-        if($tmp_arr){
-            foreach($tmp_arr as $c){
-                $t = explode('=', $c);
-                $co[$t[0]] = $t[1];
-            }
-        }*/
-        
-        
+        $split = [];
+        //"a=1@b=12#b=13@c%(1,2,3)@d^1-2"
 
+        if(preg_match('/'. $this->delete_split['or'] . '/', $condition)){
+            $or_arr = explode($this->delete_split['or'], $condition);
+            if(is_array($or_arr) && count($or_arr)){
+                foreach($or_arr as $v){
+                    $and = explode($this->delete_split['and'], $v);
+                    $split['$or'][] = $and;                    
+                }
+            }
+        }else{
+            $and_arr = explode($this->delete_split['and'], $condition);
+            $split['$and'] = $and_arr;
+        }
+
+        if(isset($split['$or'])){
+            if($split['$or']){
+                foreach($split['$or'] as $key => $and){
+                    if($and){
+                        foreach($and as $v){
+                            $co['$or'][$key][] = $this->do_split($v);
+                        } 
+                    }
+                }
+            } 
+        }elseif($split['$and']){
+            foreach($split['$and'] as $key => $v){
+                $co['$and'][$key] = $this->do_split($v);
+            } 
+        }
+        var_dump($co);exit;
         return $co;
+    }
+
+    private function do_split($v){
+        if(stripos($v, '!=')){
+            $tmp = explode('!=', $v);
+            $key = $tmp[0];
+            $val = $tmp[1];
+            return [trim($key) => trim($val)];
+        } elseif(stripos($v, '>=')){
+            $tmp = explode('>=', $v);
+            $key = $tmp[0];
+            $val = $tmp[1];
+            return [trim($key) => trim($val)];
+        } elseif(stripos($v, '>')){
+            $tmp = explode('>', $v);
+            $key = $tmp[0];
+            $val = $tmp[1];
+            return [trim($key) => trim($val)];
+        } elseif(stripos($v, '<=')){
+            $tmp = explode('<=', $v);
+            $key = $tmp[0];
+            $val = $tmp[1];
+            return [trim($key) => trim($val)];
+        } elseif(stripos($v, '=')){
+            $tmp = explode('=', $v);
+            $key = $tmp[0];
+            $val = $tmp[1];
+            return [trim($key) => trim($val)];
+        } elseif(stripos($v, '%')){
+            $tmp = explode('%', $v);
+            $key = $tmp[0];
+            $val = trim($tmp[1], '(');
+            $val = explode(',', trim($val, ')'));
+            return [trim($key) => $val];
+        } elseif(stripos($v, '^')){
+            preg_match_all('/(\w+)\^(\w+)-(\w+)/', $v, $tmp);
+            $field = trim(current($tmp[1]));
+            $ret[$field]['$gt'] = trim(current($tmp[2]));
+            $ret[$field]['$lt'] = trim(current($tmp[3]));
+            return [$field => $ret[$field]];
+        }
     }
 
     public function delete(){
