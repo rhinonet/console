@@ -115,22 +115,32 @@ class transMongo{
             $tmp = explode('!=', $v);
             $key = $tmp[0];
             $val = $tmp[1];
-            return [trim($key) => trim($val)];
+            $ret[$key]['$ne'] = trim($val);
+            return $ret;
         } elseif(stripos($v, '>=')){
             $tmp = explode('>=', $v);
             $key = $tmp[0];
             $val = $tmp[1];
-            return [trim($key) => trim($val)];
+            $ret[$key]['$gte'] = trim($val);
+            return $ret;
         } elseif(stripos($v, '>')){
             $tmp = explode('>', $v);
             $key = $tmp[0];
             $val = $tmp[1];
-            return [trim($key) => trim($val)];
+            $ret[$key]['$gt'] = trim($val);
+            return $ret;
         } elseif(stripos($v, '<=')){
             $tmp = explode('<=', $v);
             $key = $tmp[0];
             $val = $tmp[1];
-            return [trim($key) => trim($val)];
+            $ret[$key]['$lte'] = trim($val);
+            return $ret;
+        } elseif(stripos($v, '<')){
+            $tmp = explode('<', $v);
+            $key = $tmp[0];
+            $val = $tmp[1];
+            $ret[$key]['$lt'] = trim($val);
+            return $ret;
         } elseif(stripos($v, '=')){
             $tmp = explode('=', $v);
             $key = $tmp[0];
@@ -211,7 +221,7 @@ class transMongo{
         echo "\n" . $msg . "\n";exit;
     }
 }
-$d2 = "delete from testa where a=2 and b=5 or a=3 or c=7";
+$d2 = "delete from testa where c <  5";
 $stom = new transMongo;
 $stom->setSQL($d2);
 echo $d1."\n";
