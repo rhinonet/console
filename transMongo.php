@@ -159,14 +159,6 @@ class transMongo{
         echo 'db.' . $collection . '.remove(' . json_encode($condition) . ')' ."\n";    
     }
 
-    public function deleteOne(){
-        $sql = $this->format_delete_sql($this->sql);
-        $delete_arr = $this->format_delete($sql);
-        $collection = $delete_arr['table'];
-        $condition = $this->combine_condition($delete_arr['condition']);
-
-    }
-
     //-------end-select----------
     
     //-------insert--------------
