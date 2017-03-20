@@ -10,7 +10,7 @@ function replace_between_and($arr){
     $begin = isset($arr[2]) ? $arr[2] : '';
     $end = isset($arr[3]) ? $arr[3] : '';
 
-    return trim($key) . '^' . trim($begin) . '-' . trim($end);
+    return ' ' . trim($key) . '^' . trim($begin) . '-' . trim($end);
 }
 
 class transMongo{
@@ -97,17 +97,16 @@ class transMongo{
                 foreach($split['$or'] as $key => $and){
                     if($and){
                         foreach($and as $v){
-                            $co['$or'][$key][] = $this->do_split($v);
+                            $co['$or'][$key] = $this->do_split($v);
                         } 
                     }
                 }
             } 
         }elseif($split['$and']){
             foreach($split['$and'] as $key => $v){
-                $co['$and'][$key] = $this->do_split($v);
+                $co = array_merge($this->do_split($v), $co);
             } 
         }
-        var_dump($co);exit;
         return $co;
     }
 
@@ -220,7 +219,8 @@ class transMongo{
         echo "\n" . $msg . "\n";exit;
     }
 }
-
+$d2 = "delete from testa where a=2 and b=5 or a=3 or c=7";
 $stom = new transMongo;
-$stom->setSQL($d1);
+$stom->setSQL($d2);
+echo $d1."\n";
 $stom->delete();
