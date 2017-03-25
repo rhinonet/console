@@ -5,14 +5,6 @@ $s2 = "select id from testa where a = 1 group by a";
 $i1 = "insert into testa ( a, b, c ) value (1,2,3)";
 $d1 = "delete from testa where a = 1 and b = 12 or b = 13 and c in (1,2,3) and d between 1 and 2";
 
-function replace_between_and($arr){
-    $key = isset($arr[1]) ? $arr[1] : ''; 
-    $begin = isset($arr[2]) ? $arr[2] : '';
-    $end = isset($arr[3]) ? $arr[3] : '';
-
-    return ' ' . trim($key) . '^' . trim($begin) . '-' . trim($end);
-}
-
 class transMongo{
     private $sql = '';
 
@@ -56,7 +48,12 @@ class transMongo{
         $sql = preg_replace('/\s*<=\s*/', '<=', $sql );
         $sql = preg_replace('/\s*!=\s*/', '!=', $sql );
 
-        $sql = preg_replace_callback('/[\s]+([\w]+)[\s]+between([\w\s]+)and([\w\s]+)/', "replace_between_and", $sql);
+        $sql = preg_replace_callback('/[\s]+([\w]+)[\s]+between([\w\s]+)and([\w\s]+)/', function($arr){
+            $key = isset($arr[1]) ? $arr[1] : ''; 
+            $begin = isset($arr[2]) ? $arr[2] : '';
+            $end = isset($arr[3]) ? $arr[3] : '';
+            return ' ' . trim($key) . '^' . trim($begin) . '-' . trim($end);
+        }, $sql);
         $sql = preg_replace('/\s*and\s*/', $this->delete_split['and'], $sql);
         $sql = preg_replace('/\s*or\s*/',  $this->delete_split['or'], $sql);
         $sql = preg_replace('/\s*not\s+in\s*/',  $this->delete_split['nin'], $sql);
@@ -221,7 +218,7 @@ class transMongo{
         echo "\n" . $msg . "\n";exit;
     }
 }
-$d2 = "delete from testa where c <  5";
+$d2 = "delete from testa where c between 1 and  5";
 $stom = new transMongo;
 $stom->setSQL($d2);
 echo $d1."\n";
