@@ -15,15 +15,103 @@ class transMongo{
     public function getSQL(){
         return $this->sql;
     }
+
+    //-----------select-------------
     public function format_select($sql){
-    
+        $sql = preg_replace('/\s+/', ' ', $sql);
+        $sql = preg_replace('/\s*=\s*/', '=', $sql);
+        $sql = preg_replace('/\s*>\s*/', '>', $sql );
+        $sql = preg_replace('/\s*>=\s*/', '>=', $sql );
+        $sql = preg_replace('/\s*<\s*/', '<', $sql );
+        $sql = preg_replace('/\s*<=\s*/', '<=', $sql );
+        $sql = preg_replace('/\s*!=\s*/', '!=', $sql );
+
+        $sql = preg_replace_callback('/[\s]+([\w]+)[\s]+between([\w\s]+)and([\w\s]+)/', function($arr){
+            $key = isset($arr[1]) ? $arr[1] : ''; 
+            $begin = isset($arr[2]) ? $arr[2] : '';
+            $end = isset($arr[3]) ? $arr[3] : '';
+            return ' ' . trim($key) . '^' . trim($begin) . '-' . trim($end);
+        }, $sql);
+        $sql = preg_replace('/\s*and\s*/', $this->delete_split['and'], $sql);
+        $sql = preg_replace('/\s*or\s*/',  $this->delete_split['or'], $sql);
+        $sql = preg_replace('/\s*not\s+in\s*/',  $this->delete_split['nin'], $sql);
+        $sql = preg_replace('/\s*in\s*/',  $this->delete_split['in'], $sql);
+        return trim($sql);
+
     }
+
+    public function format_select_new($sql){
+        $pos_limit = stripos($sql, 'limit');
+        $limit = $sort = $group = $where = '';
+
+        if($pos_limit !== false){
+            $limit = substr($sql, $pos_limit);
+            $trim_limit = trim(trim($sql, ';'));
+            preg_match_all('/limit[\s]+([\d]+([\s]*,[\s]*[\d]+)?)/', $trim_limit, $arr);
+            if(!$arr[1]){
+                $this->error("limit error line:" . __LINE__); 
+            }else{
+                $tmp_str = $arr[1][0];
+                if(stripos($tmp_str, ',') !== false){
+                    if(preg_match('/[\d]+[\s]*,[\s]*[\d]+/', $tmp_str)){
+                        $tmp_arr = explode(',', $tmp_str);
+                        $select['limit']['skip'] = isset($tmp_arr[0]) ? intval(trim($tmp_arr[0])) : 0; 
+                        $select['limit']['limit'] = isset($tmp_arr[1]) ? intval(trim($tmp_arr[1])) : 0; 
+                    }else{
+                        $this->error("limit error 1 line:" . __LINE__);
+                    }
+                }else{
+                    if(preg_match('/[\d]+/', $tmp_str)){
+                        $select['limit']['limit'] = intval($tmp_str); 
+                    }else{
+                        $this->error("limit error 2 line:" . __LINE__);
+                    }
+                }
+            } 
+        }else{
+            $select['limit'] = [];
+        }
+
+        $select['fields'] = [];
+        $select['table'] = '';
+        $select['condition'] = [];
+        $select['sort'] = ['a' => 1, 'b' => -1];
+        $select['group'] = [];
+        return $select; 
+    }
+
+    private $select_split = [
+        'and' => '@',
+        'or' => '#',
+        'nin' => '$',
+        'in' => '%',
+        'between' => '^',
+        'sort' => '&',
+        'limit' => '*', 
+    ];
+
+
 
     public function select(){
         $sql = $this->sql;
-        $sql_arr = $this->format_select($sql);
+        $sql_arr = $this->format_select_new($sql);
+
+        $sort = '';
+        $limit = '';
+        $skip = '';
+
+        if(isset($sql_arr['sort']) && $sql_arr['sort']){
+            $sort = '.sort(' . json_encode($sql_arr['sort']) . ')';
+        }
+        if(isset($sql_arr['limit']) && $sql_arr['limit']){
+            $limit = isset($sql_arr['limit']['limit']) && $sql_arr['limit']['limit'] ? '.limit('.intval($sql_arr['limit']['limit']). ')' : '';
+            $skip = isset($sql_arr['limit']['skip']) && $sql_arr['limit']{'skip'}? '.skip('.intval($sql_arr['limit']['skip']). ')' : '';
+        }
+        var_dump($sort.$skip.$limit);exit;
     }
 
+    //--------end-select--------
+    
     public function update(){
 
     }
@@ -218,8 +306,7 @@ class transMongo{
         echo "\n" . $msg . "\n";exit;
     }
 }
-$d2 = "delete from testa where c between 1 and  5";
+$d2 = "select * from testa where a = 1 and b = 2 limit 1 , 3 ;";
 $stom = new transMongo;
 $stom->setSQL($d2);
-echo $d1."\n";
-$stom->delete();
+$stom->select();
