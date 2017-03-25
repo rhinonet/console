@@ -41,9 +41,9 @@ class transMongo{
     }
 
     public function format_select_new($sql){
-        $pos_limit = stripos($sql, 'limit');
         $limit = $sort = $group = $where = '';
 
+        $pos_limit = stripos($sql, 'limit');
         if($pos_limit !== false){
             $limit = substr($sql, $pos_limit);
             $trim_limit = trim(trim($sql, ';'));
@@ -71,6 +71,10 @@ class transMongo{
         }else{
             $select['limit'] = [];
         }
+        if($limit){
+            $sql = str_replace($limit, '', $sql);
+        }
+        var_dump($sql);exit;
 
         $select['fields'] = [];
         $select['table'] = '';
@@ -306,7 +310,7 @@ class transMongo{
         echo "\n" . $msg . "\n";exit;
     }
 }
-$d2 = "select * from testa where a = 1 and b = 2 limit 1 , 3 ;";
+$d2 = "select * from testa where a = 1 and b = 2 order by a asc, b desc limit 1 , 3 ;";
 $stom = new transMongo;
 $stom->setSQL($d2);
 $stom->select();
