@@ -74,7 +74,44 @@ class transMongo{
         if($limit){
             $sql = str_replace($limit, '', $sql);
         }
-        var_dump($sql);exit;
+
+        $pos_sort = stripos($sql, 'order');
+        if($pos_sort !== false){
+            $sort = substr($sql, $pos_sort);
+            $pos_sort = $sort;
+            preg_match_all( '/order[\s]+by[\s](\w+\s+(asc|desc)*\s*)(\s*,\s*\w+\s+(asc|desc)?\s*)?/', $pos_sort, $arr);
+            if(!(isset($arr[0][0]) && $arr[0][0])){
+                $this->error("limit error line:" . __LINE__); 
+            }else{
+                $tmp_str = $arr[0][0];
+                $order = str_replace('order', '', $tmp_str);
+                $order = str_replace('by', '', $order);
+                $order_arr = explode(',', $order);
+                if($order_arr){
+                    foreach($order_arr as $v){
+                        if(!$v){
+                            continue;
+                        }
+                        if(stripos($v, 'asc')){
+                            $k = trim(str_replace('asc', '', $v));
+                            $select['sort'][$k] = 1;
+                        }elseif(stripos($v, 'desc')){
+                            $k = trim(str_replace('desc', '', $v));
+                            $select['sort'][$k] = -1;
+                        }else{
+                            $k = trim($v);
+                            $select['sort'][$k] = 1;
+                        }
+                    }
+                } 
+            } 
+        }else{
+            $select['sort'] = [];
+        }
+        if($sort){
+            $sql = str_replace($sort, '', $sql);
+        }
+
 
         $select['fields'] = [];
         $select['table'] = '';
@@ -310,7 +347,7 @@ class transMongo{
         echo "\n" . $msg . "\n";exit;
     }
 }
-$d2 = "select * from testa where a = 1 and b = 2 order by a asc, b desc limit 1 , 3 ;";
+$d2 = "select * from testa where a = 1 and b = 2 order by a asc, b limit 1 ;";
 $stom = new transMongo;
 $stom->setSQL($d2);
 $stom->select();
