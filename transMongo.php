@@ -16,6 +16,15 @@ class transMongo{
         return $this->sql;
     }
 
+    //-----------group--------------
+
+    public function group(){
+    
+    }
+
+    //-----------end-group----------
+
+
     //-----------select-------------
     public function format_select($sql){
         $sql = preg_replace('/\s+/', ' ', $sql);
@@ -41,7 +50,7 @@ class transMongo{
     }
 
     public function format_select_new($sql){
-        $limit = $sort = $group = $where = '';
+        $limit = $sort = $where = $table = '';
 
         $pos_limit = stripos($sql, 'limit');
         if($pos_limit !== false){
@@ -78,10 +87,10 @@ class transMongo{
         $pos_sort = stripos($sql, 'order');
         if($pos_sort !== false){
             $sort = substr($sql, $pos_sort);
-            $pos_sort = $sort;
-            preg_match_all( '/order[\s]+by[\s](\w+\s+(asc|desc)*\s*)(\s*,\s*\w+\s+(asc|desc)?\s*)?/', $pos_sort, $arr);
+            $tmp_sort = $sort;
+            preg_match_all( '/order[\s]+by[\s](\w+\s+(asc|desc)*\s*)(\s*,\s*\w+\s+(asc|desc)?\s*)?/', $tmp_sort, $arr);
             if(!(isset($arr[0][0]) && $arr[0][0])){
-                $this->error("limit error line:" . __LINE__); 
+                $this->error("sort error line:" . __LINE__); 
             }else{
                 $tmp_str = $arr[0][0];
                 $order = str_replace('order', '', $tmp_str);
@@ -112,12 +121,27 @@ class transMongo{
             $sql = str_replace($sort, '', $sql);
         }
 
+        //condition
+        $pos_condition = stripos($sql, 'where');
+        if($pos_condition !== false){
+            $condition = substr($sql, $pos_condition);
+            $tmp_condition = $condition;
+            if(stripos($tmp_condition, '(')){
+            
+            }
+            
+        }else{
+            $select['condition'] = [];
+        }
+        if($condition){
+            $sql = str_replace($condition, '', $sql);
+        }
+
+ 
 
         $select['fields'] = [];
         $select['table'] = '';
         $select['condition'] = [];
-        $select['sort'] = ['a' => 1, 'b' => -1];
-        $select['group'] = [];
         return $select; 
     }
 
@@ -347,7 +371,7 @@ class transMongo{
         echo "\n" . $msg . "\n";exit;
     }
 }
-$d2 = "select * from testa where a = 1 and b = 2 order by a asc, b limit 1 ;";
+$d2 = "select * from testa where a = 1 and b = 2 order by a desc, b limit 1, 4;";
 $stom = new transMongo;
 $stom->setSQL($d2);
 $stom->select();
