@@ -88,7 +88,8 @@ class transMongo{
         if($pos_sort !== false){
             $sort = substr($sql, $pos_sort);
             $tmp_sort = $sort;
-            preg_match_all( '/order[\s]+by[\s](\w+\s+(asc|desc)*\s*)(\s*,\s*\w+\s+(asc|desc)?\s*)?/', $tmp_sort, $arr);
+            //preg_match_all( '/order[\s]+by[\s](\w+\s+(asc|desc)*\s*)(\s*,\s*\w+\s+(asc|desc)?\s*)?/', $tmp_sort, $arr);
+            preg_match_all('/order\s+by\s+\w+(\s+(asc|desc)?)?(\s*,\s*\w+(\s+(asc|desc)?)?\s*)?\s+/', $tmp_sort, $arr);
             if(!(isset($arr[0][0]) && $arr[0][0])){
                 $this->error("sort error line:" . __LINE__); 
             }else{
