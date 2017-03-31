@@ -19,7 +19,7 @@ class transMongo{
     //-----------group--------------
 
     public function group(){
-    
+
     }
 
     //-----------end-group----------
@@ -128,21 +128,21 @@ class transMongo{
             $condition = substr($sql, $pos_condition);
             $tmp_condition = $condition;
             $pos_between = stripos($tmp_condition, 'between');
-	    if($pos_between !== false){
-		 $tmp_condition = preg_replace_callback('/[\s]+([\w]+)[\s]+between\s+([\w]+)\s+and\s+([\w]+)\s/', function($arr){
-            		$key = isset($arr[1]) ? $arr[1] : ''; 
-            		$begin = isset($arr[2]) ? $arr[2] : '';
-            		$end = isset($arr[3]) ? $arr[3] : '';
-			if(!($begin && $end && trim($begin) < trim($end))){
-				$this->error('select between error line:' . __LINE__);
-			}
-            		return ' (' . $key . ' >= ' . trim($begin) . ' && ' .  $key . ' <= ' . trim($end) . ') ';
-        		}, $tmp_condition);
-	    }
+            if($pos_between !== false){
+                $tmp_condition = preg_replace_callback('/[\s]+([\w]+)[\s]+between\s+([\w]+)\s+and\s+([\w]+)\s/', function($arr){
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $begin = isset($arr[2]) ? $arr[2] : '';
+                    $end = isset($arr[3]) ? $arr[3] : '';
+                    if(!($begin && $end && trim($begin) < trim($end))){
+                        $this->error('select between error line:' . __LINE__);
+                    }
+                    return ' (' . $key . ' >= ' . trim($begin) . ' && ' .  $key . ' <= ' . trim($end) . ') ';
+                }, $tmp_condition);
+            }
 
-	    if(preg_match('/not\s+in/', $tmp_condition)){
-		//$tmp_condition = preg_match_all('/\s+(\w+)\s+not\s+in\s*\((\w+(\s*,\w+)*)\)/', $tmp_condition, $arr);
-		$tmp_condition = preg_replace_callback('/\s+(\w+)\s+not\s+in\s*\((\w+(\s*,\s*\w+)*)\s*\)/', function($arr){
+            if(preg_match('/not\s+in/', $tmp_condition)){
+                //$tmp_condition = preg_match_all('/\s+(\w+)\s+not\s+in\s*\((\w+(\s*,\w+)*)\)/', $tmp_condition, $arr);
+                $tmp_condition = preg_replace_callback('/\s+(\w+)\s+not\s+in\s*\((\w+(\s*,\s*\w+)*)\s*\)/', function($arr){
 
 /*array(4) {
   [0]=>
@@ -154,31 +154,31 @@ class transMongo{
   [3]=>
   string(2) ",3"
 }*/
-            		$key = isset($arr[1]) ? $arr[1] : ''; 
-            		$values = isset($arr[2]) ? $arr[2] : '';
-			if(!($key && $values)){
-				$this->error('select not in error line:' . __LINE__);
-			}
-			$tarr = explode(',', $values);
-			$rets = ' (';
-			if($tarr){
-				foreach($tarr as $v){
-					if($v === ''){
-						$this->error('select not in error line:' . __LINE__);
-					}
-					$rets .= ' ' . $key . ' != ' . $v . ' ||';
-				}
-				$rets = substr($rets, 0, -2);
-				$rets .= ') ';
-			}else{
-				$this->error('select not in error line:' . __LINE__);
-			}
-            		return $rets;
-        		}, $tmp_condition);
-	    }
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $values = isset($arr[2]) ? $arr[2] : '';
+                    if(!($key && $values)){
+                        $this->error('select not in error line:' . __LINE__);
+                    }
+                    $tarr = explode(',', $values);
+                    $rets = ' (';
+                    if($tarr){
+                        foreach($tarr as $v){
+                            if($v === ''){
+                                $this->error('select not in error line:' . __LINE__);
+                            }
+                            $rets .= ' ' . $key . ' != ' . $v . ' ||';
+                        }
+                        $rets = substr($rets, 0, -2);
+                        $rets .= ') ';
+                    }else{
+                        $this->error('select not in error line:' . __LINE__);
+                    }
+                    return $rets;
+                }, $tmp_condition);
+            }
 
-	    if(preg_match('/in/', $tmp_condition)){
-		$tmp_condition = preg_replace_callback('/\s+(\w+)\s+in\s*\((\w+(\s*,\s*\w+)*)\s*\)/', function($arr){
+            if(preg_match('/in/', $tmp_condition)){
+                $tmp_condition = preg_replace_callback('/\s+(\w+)\s+in\s*\((\w+(\s*,\s*\w+)*)\s*\)/', function($arr){
 /*array(4) {
   [0]=>
   string(13) " e in (1,2,3)"
@@ -189,39 +189,39 @@ class transMongo{
   [3]=>
   string(2) ",3"
 }*/
-            		$key = isset($arr[1]) ? $arr[1] : ''; 
-            		$values = isset($arr[2]) ? $arr[2] : '';
-			if(!($key && $values)){
-				$this->error('select in error line:' . __LINE__);
-			}
-			$tarr = explode(',', $values);
-			$rets = ' (';
-			if($tarr){
-				foreach($tarr as $v){
-					if($v === ''){
-						$this->error('select not in error line:' . __LINE__);
-					}
-					$rets .= ' ' . $key . ' == ' . $v . ' ||';
-				}
-				$rets = substr($rets, 0, -2);
-				$rets .= ') ';
-			}else{
-				$this->error('select not in error line:' . __LINE__);
-			}
-            		return $rets;
-        		}, $tmp_condition);
-	    }
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $values = isset($arr[2]) ? $arr[2] : '';
+                    if(!($key && $values)){
+                        $this->error('select in error line:' . __LINE__);
+                    }
+                    $tarr = explode(',', $values);
+                    $rets = ' (';
+                    if($tarr){
+                        foreach($tarr as $v){
+                            if($v === ''){
+                                $this->error('select not in error line:' . __LINE__);
+                            }
+                            $rets .= ' ' . $key . ' == ' . $v . ' ||';
+                        }
+                        $rets = substr($rets, 0, -2);
+                        $rets .= ') ';
+                    }else{
+                        $this->error('select not in error line:' . __LINE__);
+                    }
+                    return $rets;
+                }, $tmp_condition);
+            }
 
-	    $pos_and = stripos($tmp_condition, 'and');
-	    if($pos_and != false){
-		$tmp_condition = str_replace('and', '&&', $tmp_condition);
-	    }		
- 
-	    $pos_or = stripos($tmp_condition, 'or');
-	    if($pos_or != false){
-		$tmp_condition = str_replace('or', '||', $tmp_condition);
-	    }		
-   	    $select['condition'] = str_replace('where', '', $tmp_condition );
+            $pos_and = stripos($tmp_condition, 'and');
+            if($pos_and != false){
+                $tmp_condition = str_replace('and', '&&', $tmp_condition);
+            }		
+
+            $pos_or = stripos($tmp_condition, 'or');
+            if($pos_or != false){
+                $tmp_condition = str_replace('or', '||', $tmp_condition);
+            }		
+            $select['condition'] = str_replace('where', '', $tmp_condition );
         }else{
             $select['condition'] = '';
         }
@@ -252,35 +252,35 @@ class transMongo{
     string(5) "testa"
   }
 }*/
-	if(stripos($sql, '*') !== false){
-		$reg = "/\s*select\s+[\*]\s+from\s+(\w+)\s+/";
-		preg_match_all($reg, $sql, $sinfo);
-		
-		$select['filds'] = [];	
-		if(isset($sinfo[1][0]) && $sinfo[1][0]){
-        		$select['table'] = $sinfo[1][0];
-		}else{
-			$this->error('select table name error line:'.__LINE__);
-		}
-	} else{
-		$reg = "/\s*select\s+(\w+(\s*,\s*\w+)*)\s+from\s+(\w+)\s+/";
-		preg_match_all($reg, $sql, $sinfo);
-        	if(isset($sinfo[1][0]) && $sinfo[1][0]){
-			$farr = explode(',', $sinfo[1][0]);
-			if($farr){
-				foreach($farr as $fname){
-				     $select['fields'][trim($fname)] = 1;
-				}
-			}
-		}else{
-			$this->error('select fields error line:'.__LINE__);
-		}
-		if(isset($sinfo[3][0]) && $sinfo[3][0]){
-        		$select['table'] = $sinfo[3][0];
-		}else{
-			$this->error('select table name error line:'.__LINE__);
-		}
-	}
+        if(stripos($sql, '*') !== false){
+            $reg = "/\s*select\s+[\*]\s+from\s+(\w+)\s+/";
+            preg_match_all($reg, $sql, $sinfo);
+
+            $select['filds'] = [];	
+            if(isset($sinfo[1][0]) && $sinfo[1][0]){
+                $select['table'] = $sinfo[1][0];
+            }else{
+                $this->error('select table name error line:'.__LINE__);
+            }
+        } else{
+            $reg = "/\s*select\s+(\w+(\s*,\s*\w+)*)\s+from\s+(\w+)\s+/";
+            preg_match_all($reg, $sql, $sinfo);
+            if(isset($sinfo[1][0]) && $sinfo[1][0]){
+                $farr = explode(',', $sinfo[1][0]);
+                if($farr){
+                    foreach($farr as $fname){
+                        $select['fields'][trim($fname)] = 1;
+                    }
+                }
+            }else{
+                $this->error('select fields error line:'.__LINE__);
+            }
+            if(isset($sinfo[3][0]) && $sinfo[3][0]){
+                $select['table'] = $sinfo[3][0];
+            }else{
+                $this->error('select table name error line:'.__LINE__);
+            }
+        }
 
         return $select; 
     }
@@ -304,8 +304,8 @@ class transMongo{
         $sort = '';
         $limit = '';
         $skip = '';
-	$field = '';
-	$condition = '';
+        $field = '';
+        $condition = '';
 
         if(isset($sql_arr['sort']) && $sql_arr['sort']){
             $sort = '.sort(' . json_encode($sql_arr['sort']) . ')';
@@ -315,27 +315,27 @@ class transMongo{
             $skip = isset($sql_arr['limit']['skip']) && $sql_arr['limit']{'skip'}? '.skip('.intval($sql_arr['limit']['skip']). ')' : '';
         }
         if(isset($sql_arr['condition']) && $sql_arr['condition']){
-	    $co_arr['$where'] = 'function(){ return ' . $sql_arr['condition'] . ' }';
-	    $condition = json_encode($co_arr);
-	}
-	if(isset($sql_arr['fields']) && $sql_arr['fields']){
-	    $field = ", " . json_encode($sql_arr['fields']);
-	}
-	if(isset($sql_arr['table']) && $sql_arr['table']){
-	    $collection = $sql_arr['table'];
-	}
+            $co_arr['$where'] = 'function(){ return ' . $sql_arr['condition'] . ' }';
+            $condition = json_encode($co_arr);
+        }
+        if(isset($sql_arr['fields']) && $sql_arr['fields']){
+            $field = ", " . json_encode($sql_arr['fields']);
+        }
+        if(isset($sql_arr['table']) && $sql_arr['table']){
+            $collection = $sql_arr['table'];
+        }
         echo 'db.' . $collection . '.find(' . $condition . $field . ")" . $sort.$skip.$limit."\n";exit;
     }
 
     //--------end-select--------
-    
+
     public function update(){
 
     }
 
 
     //------delete-------
-     
+
     private $delete_split = [
         'and' => '@',
         'or' => '#',
@@ -472,7 +472,7 @@ class transMongo{
     }
 
     //-------end-delete----------
-    
+
     //-------insert--------------
     public function format_insert_sql($sql){
         $sql = preg_replace('/\s+/', ' ', $sql);
