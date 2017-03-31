@@ -141,8 +141,8 @@ class transMongo{
 	    }
 
 	    if(preg_match('/not\s+in/', $tmp_condition)){
-		//$tmp_condition = preg_match_all('/\s+(\w+)\s+not\s+in\s*\((\w+(,\w+)*)\)/', $tmp_condition, $arr);
-		$tmp_condition = preg_replace_callback('/\s+(\w+)\s+not\s+in\s*\((\w+(,\w+)*)\s*\)/', function($arr){
+		//$tmp_condition = preg_match_all('/\s+(\w+)\s+not\s+in\s*\((\w+(\s*,\w+)*)\)/', $tmp_condition, $arr);
+		$tmp_condition = preg_replace_callback('/\s+(\w+)\s+not\s+in\s*\((\w+(\s*,\s*\w+)*)\s*\)/', function($arr){
 
 /*array(4) {
   [0]=>
@@ -178,7 +178,7 @@ class transMongo{
 	    }
 
 	    if(preg_match('/in/', $tmp_condition)){
-		$tmp_condition = preg_replace_callback('/\s+(\w+)\s+in\s*\((\w+(,\w+)*)\s*\)/', function($arr){
+		$tmp_condition = preg_replace_callback('/\s+(\w+)\s+in\s*\((\w+(\s*,\s*\w+)*)\s*\)/', function($arr){
 /*array(4) {
   [0]=>
   string(13) " e in (1,2,3)"
@@ -211,21 +211,77 @@ class transMongo{
             		return $rets;
         		}, $tmp_condition);
 	    }
-	    
-            
+
+	    $pos_and = stripos($tmp_condition, 'and');
+	    if($pos_and != false){
+		$tmp_condition = str_replace('and', '&&', $tmp_condition);
+	    }		
+ 
+	    $pos_or = stripos($tmp_condition, 'or');
+	    if($pos_or != false){
+		$tmp_condition = str_replace('or', '||', $tmp_condition);
+	    }		
+   	    $select['condition'] = str_replace('where', '', $tmp_condition );
         }else{
-            $select['condition'] = [];
+            $select['condition'] = '';
         }
 
         if($condition){
             $sql = str_replace($condition, '', $sql);
         }
 
- 
+/*array(4) {
+  [0]=>
+  array(1) {
+    [0]=>
+    string(25) "select a, b,c from testa "
+  }
+  [1]=>
+  array(1) {
+    [0]=>
+    string(6) "a, b,c"
+  }
+  [2]=>
+  array(1) {
+    [0]=>
+    string(2) ",c"
+  }
+  [3]=>
+  array(1) {
+    [0]=>
+    string(5) "testa"
+  }
+}*/
+	if(stripos($sql, '*') !== false){
+		$reg = "/\s*select\s+[\*]\s+from\s+(\w+)\s+/";
+		preg_match_all($reg, $sql, $sinfo);
+		
+		$select['filds'] = [];	
+		if(isset($sinfo[1][0]) && $sinfo[1][0]){
+        		$select['table'] = $sinfo[1][0];
+		}else{
+			$this->error('select table name error line:'.__LINE__);
+		}
+	} else{
+		$reg = "/\s*select\s+(\w+(\s*,\s*\w+)*)\s+from\s+(\w+)\s+/";
+		preg_match_all($reg, $sql, $sinfo);
+        	if(isset($sinfo[1][0]) && $sinfo[1][0]){
+			$farr = explode(',', $sinfo[1][0]);
+			if($farr){
+				foreach($farr as $fname){
+				     $select['fields'][trim($fname)] = 1;
+				}
+			}
+		}else{
+			$this->error('select fields error line:'.__LINE__);
+		}
+		if(isset($sinfo[3][0]) && $sinfo[3][0]){
+        		$select['table'] = $sinfo[3][0];
+		}else{
+			$this->error('select table name error line:'.__LINE__);
+		}
+	}
 
-        $select['fields'] = [];
-        $select['table'] = '';
-        $select['condition'] = [];
         return $select; 
     }
 
@@ -248,6 +304,8 @@ class transMongo{
         $sort = '';
         $limit = '';
         $skip = '';
+	$field = '';
+	$condition = '';
 
         if(isset($sql_arr['sort']) && $sql_arr['sort']){
             $sort = '.sort(' . json_encode($sql_arr['sort']) . ')';
@@ -256,7 +314,17 @@ class transMongo{
             $limit = isset($sql_arr['limit']['limit']) && $sql_arr['limit']['limit'] ? '.limit('.intval($sql_arr['limit']['limit']). ')' : '';
             $skip = isset($sql_arr['limit']['skip']) && $sql_arr['limit']{'skip'}? '.skip('.intval($sql_arr['limit']['skip']). ')' : '';
         }
-        var_dump($sort.$skip.$limit);exit;
+        if(isset($sql_arr['condition']) && $sql_arr['condition']){
+	    $co_arr['$where'] = 'function(){ return ' . $sql_arr['condition'] . ' }';
+	    $condition = json_encode($co_arr);
+	}
+	if(isset($sql_arr['fields']) && $sql_arr['fields']){
+	    $field = ", " . json_encode($sql_arr['fields']);
+	}
+	if(isset($sql_arr['table']) && $sql_arr['table']){
+	    $collection = $sql_arr['table'];
+	}
+        echo 'db.' . $collection . '.find(' . $condition . $field . ")" . $sort.$skip.$limit."\n";exit;
     }
 
     //--------end-select--------
@@ -455,7 +523,7 @@ class transMongo{
         echo "\n" . $msg . "\n";exit;
     }
 }
-$d2 = "select * from testa where a = 1 and d not in (1,2,3) and e in (1,2,3) and c between 1 and 3 and b = 2 order by a desc, b limit 1, 4;";
+$d2 = "select a,b, c, d from testa where a = 1 and d not in (1,2,3) and e in (1,2,3) and c between 1 and 3 and b = 2 order by a desc, b limit 1, 4;";
 $stom = new transMongo;
 $stom->setSQL($d2);
 $stom->select();
