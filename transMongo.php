@@ -523,7 +523,7 @@ class transMongo{
         echo "\n" . $msg . "\n";exit;
     }
 }
-$d2 = "select a,b, c, d from testa where a = 1 and d not in (1,2,3) and e in (1,2,3) and c between 1 and 3 and b = 2 order by a desc, b limit 1, 4;";
+$d2 = "select a,b, c, d from testa where a between 2 and 4 and b between 3 and 5;";
 $stom = new transMongo;
 $stom->setSQL($d2);
 $stom->select();
