@@ -142,8 +142,8 @@ class transMongo{
 
 
             if(preg_match('/not\s+in/', $tmp_condition)){
-                //$tmp_condition = preg_match_all('/\s+(\w+)\s+not\s+in\s*\((\w+(\s*,\w+)*)\)/', $tmp_condition, $arr);
-                $tmp_condition = preg_replace_callback('/\s+(\w+)\s+not\s+in\s*\((\w+(\s*,\s*\w+)*)\s*\)/', function($arr){
+                //$tmp_condition = preg_match_all('/\s+(\w+)\s+not\s+in\s*\(\s*(\w+(\s*,\w+)*)\)/', $tmp_condition, $arr);
+                $tmp_condition = preg_replace_callback('/\s+(\w+)\s+not\s+in\s*\((\s*\w+(\s*,\s*\w+)*)\s*\)/', function($arr){
 
 /*array(4) {
   [0]=>
@@ -179,7 +179,7 @@ class transMongo{
             }
 
             if(preg_match('/in/', $tmp_condition)){
-                $tmp_condition = preg_replace_callback('/\s+(\w+)\s+in\s*\((\w+(\s*,\s*\w+)*)\s*\)/', function($arr){
+                $tmp_condition = preg_replace_callback('/\s+(\w+)\s+in\s*\(\s*(\w+(\s*,\s*\w+)*)\s*\)/', function($arr){
 /*array(4) {
   [0]=>
   string(13) " e in (1,2,3)"
@@ -524,7 +524,7 @@ class transMongo{
         echo "\n" . $msg . "\n";exit;
     }
 }
-$d2 = "select a,b, c, d from testa where a not in(2,4) and b not in (3,5) ;";
+$d2 = "select a,b, c, d from testa where a in( 2,4) and b not in (3,5) ;";
 $stom = new transMongo;
 $stom->setSQL($d2);
 $stom->select();
