@@ -127,13 +127,96 @@ class transMongo{
         if($pos_condition !== false){
             $condition = substr($sql, $pos_condition);
             $tmp_condition = $condition;
-            if(stripos($tmp_condition, '(')){
-            
-            }
+            $pos_between = stripos($tmp_condition, 'between');
+	    if($pos_between !== false){
+		 $tmp_condition = preg_replace_callback('/[\s]+([\w]+)[\s]+between\s+([\w]+)\s+and\s+([\w]+)\s/', function($arr){
+            		$key = isset($arr[1]) ? $arr[1] : ''; 
+            		$begin = isset($arr[2]) ? $arr[2] : '';
+            		$end = isset($arr[3]) ? $arr[3] : '';
+			if(!($begin && $end && trim($begin) < trim($end))){
+				$this->error('select between error line:' . __LINE__);
+			}
+            		return ' (' . $key . ' >= ' . trim($begin) . ' && ' .  $key . ' <= ' . trim($end) . ') ';
+        		}, $tmp_condition);
+	    }
+
+	    if(preg_match('/not\s+in/', $tmp_condition)){
+		//$tmp_condition = preg_match_all('/\s+(\w+)\s+not\s+in\s*\((\w+(,\w+)*)\)/', $tmp_condition, $arr);
+		$tmp_condition = preg_replace_callback('/\s+(\w+)\s+not\s+in\s*\((\w+(,\w+)*)\s*\)/', function($arr){
+
+/*array(4) {
+  [0]=>
+  string(17) " d not in (1,2,3)"
+  [1]=>
+  string(1) "d"
+  [2]=>
+  string(5) "1,2,3"
+  [3]=>
+  string(2) ",3"
+}*/
+            		$key = isset($arr[1]) ? $arr[1] : ''; 
+            		$values = isset($arr[2]) ? $arr[2] : '';
+			if(!($key && $values)){
+				$this->error('select not in error line:' . __LINE__);
+			}
+			$tarr = explode(',', $values);
+			$rets = ' (';
+			if($tarr){
+				foreach($tarr as $v){
+					if($v === ''){
+						$this->error('select not in error line:' . __LINE__);
+					}
+					$rets .= ' ' . $key . ' != ' . $v . ' ||';
+				}
+				$rets = substr($rets, 0, -2);
+				$rets .= ') ';
+			}else{
+				$this->error('select not in error line:' . __LINE__);
+			}
+            		return $rets;
+        		}, $tmp_condition);
+	    }
+
+	    if(preg_match('/in/', $tmp_condition)){
+		$tmp_condition = preg_replace_callback('/\s+(\w+)\s+in\s*\((\w+(,\w+)*)\s*\)/', function($arr){
+/*array(4) {
+  [0]=>
+  string(13) " e in (1,2,3)"
+  [1]=>
+  string(1) "e"
+  [2]=>
+  string(5) "1,2,3"
+  [3]=>
+  string(2) ",3"
+}*/
+            		$key = isset($arr[1]) ? $arr[1] : ''; 
+            		$values = isset($arr[2]) ? $arr[2] : '';
+			if(!($key && $values)){
+				$this->error('select in error line:' . __LINE__);
+			}
+			$tarr = explode(',', $values);
+			$rets = ' (';
+			if($tarr){
+				foreach($tarr as $v){
+					if($v === ''){
+						$this->error('select not in error line:' . __LINE__);
+					}
+					$rets .= ' ' . $key . ' == ' . $v . ' ||';
+				}
+				$rets = substr($rets, 0, -2);
+				$rets .= ') ';
+			}else{
+				$this->error('select not in error line:' . __LINE__);
+			}
+            		return $rets;
+        		}, $tmp_condition);
+	    }
+	    
             
         }else{
             $select['condition'] = [];
         }
+
         if($condition){
             $sql = str_replace($condition, '', $sql);
         }
@@ -320,7 +403,7 @@ class transMongo{
         echo 'db.' . $collection . '.remove(' . json_encode($condition) . ')' ."\n";    
     }
 
-    //-------end-select----------
+    //-------end-delete----------
     
     //-------insert--------------
     public function format_insert_sql($sql){
@@ -372,7 +455,7 @@ class transMongo{
         echo "\n" . $msg . "\n";exit;
     }
 }
-$d2 = "select * from testa where a = 1 and b = 2 order by a desc, b limit 1, 4;";
+$d2 = "select * from testa where a = 1 and d not in (1,2,3) and e in (1,2,3) and c between 1 and 3 and b = 2 order by a desc, b limit 1, 4;";
 $stom = new transMongo;
 $stom->setSQL($d2);
 $stom->select();
