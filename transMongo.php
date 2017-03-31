@@ -129,7 +129,7 @@ class transMongo{
             $tmp_condition = $condition;
             $pos_between = stripos($tmp_condition, 'between');
             if($pos_between !== false){
-                $tmp_condition = preg_replace_callback('/[\s]+([\w]+)[\s]+between\s+([\w]+)\s+and\s+([\w]+)\s/', function($arr){
+                $tmp_condition = preg_replace_callback('/[\s]+([\w]+)[\s]+between\s+([\w]+)\s+and\s+([\w]+)\s*/', function($arr){
                     $key = isset($arr[1]) ? $arr[1] : ''; 
                     $begin = isset($arr[2]) ? $arr[2] : '';
                     $end = isset($arr[3]) ? $arr[3] : '';
@@ -139,6 +139,7 @@ class transMongo{
                     return ' (' . $key . ' >= ' . trim($begin) . ' && ' .  $key . ' <= ' . trim($end) . ') ';
                 }, $tmp_condition);
             }
+
 
             if(preg_match('/not\s+in/', $tmp_condition)){
                 //$tmp_condition = preg_match_all('/\s+(\w+)\s+not\s+in\s*\((\w+(\s*,\w+)*)\)/', $tmp_condition, $arr);
@@ -523,7 +524,7 @@ class transMongo{
         echo "\n" . $msg . "\n";exit;
     }
 }
-$d2 = "select a,b, c, d from testa where a between 2 and 4 and b between 3 and 5;";
+$d2 = "select a,b, c, d from testa where a not in(2,4) and b not in (3,5) ;";
 $stom = new transMongo;
 $stom->setSQL($d2);
 $stom->select();
