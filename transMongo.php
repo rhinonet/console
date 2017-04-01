@@ -471,7 +471,7 @@ array(4) {
 }*/
 	$reg = "/\s*update\s+(\w+)\s+set\s+(\w+\s*=\s*\w+(\s*,\s*\w+\s*=\s*\w+)*\s*)/";
 	preg_match_all($reg, $sql, $sinfo);
-	if(isset($sinfo[1][0]) && $sinfo[2][0]){
+	if(isset($sinfo[2][0]) && $sinfo[2][0]){
 		$farr = explode(',', $sinfo[2][0]);
 		if($farr){
 			foreach($farr as $kv){
@@ -652,11 +652,140 @@ array(4) {
         }
     }
 
+    private function format_delete_sql_new($sql){
+	//condition
+        $pos_condition = stripos($sql, 'where');
+        if($pos_condition !== false){
+            $condition = substr($sql, $pos_condition);
+            $tmp_condition = $condition;
+            $pos_between = stripos($tmp_condition, 'between');
+            if($pos_between !== false){
+                $tmp_condition = preg_replace_callback('/[\s]+([\w]+)[\s]+between\s+([\w]+)\s+and\s+([\w]+)\s*/', function($arr){
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $begin = isset($arr[2]) ? $arr[2] : '';
+                    $end = isset($arr[3]) ? $arr[3] : '';
+                    if(!($begin && $end && trim($begin) < trim($end))){
+                        $this->error('select between error line:' . __LINE__);
+                    }
+                    return ' (' . $key . ' >= ' . trim($begin) . ' && ' .  $key . ' <= ' . trim($end) . ') ';
+                }, $tmp_condition);
+            }
+
+
+            if(preg_match('/not\s+in/', $tmp_condition)){
+                //$tmp_condition = preg_match_all('/\s+(\w+)\s+not\s+in\s*\(\s*(\w+(\s*,\w+)*)\)/', $tmp_condition, $arr);
+                $tmp_condition = preg_replace_callback('/\s+(\w+)\s+not\s+in\s*\((\s*\w+(\s*,\s*\w+)*)\s*\)/', function($arr){
+
+/*array(4) {
+  [0]=>
+  string(17) " d not in (1,2,3)"
+  [1]=>
+  string(1) "d"
+  [2]=>
+  string(5) "1,2,3"
+  [3]=>
+  string(2) ",3"
+}*/
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $values = isset($arr[2]) ? $arr[2] : '';
+                    if(!($key && $values)){
+                        $this->error('select not in error line:' . __LINE__);
+                    }
+                    $tarr = explode(',', $values);
+                    $rets = ' (';
+                    if($tarr){
+                        foreach($tarr as $v){
+                            if($v === ''){
+                                $this->error('select not in error line:' . __LINE__);
+                            }
+                            $rets .= ' ' . $key . ' != ' . $v . ' ||';
+                        }
+                        $rets = substr($rets, 0, -2);
+                        $rets .= ') ';
+                    }else{
+                        $this->error('select not in error line:' . __LINE__);
+                    }
+                    return $rets;
+                }, $tmp_condition);
+            }
+
+            if(preg_match('/in/', $tmp_condition)){
+                $tmp_condition = preg_replace_callback('/\s+(\w+)\s+in\s*\(\s*(\w+(\s*,\s*\w+)*)\s*\)/', function($arr){
+/*array(4) {
+  [0]=>
+  string(13) " e in (1,2,3)"
+  [1]=>
+  string(1) "e"
+  [2]=>
+  string(5) "1,2,3"
+  [3]=>
+  string(2) ",3"
+}*/
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $values = isset($arr[2]) ? $arr[2] : '';
+                    if(!($key && $values)){
+                        $this->error('select in error line:' . __LINE__);
+                    }
+                    $tarr = explode(',', $values);
+                    $rets = ' (';
+                    if($tarr){
+                        foreach($tarr as $v){
+                            if($v === ''){
+                                $this->error('select not in error line:' . __LINE__);
+                            }
+                            $rets .= ' ' . $key . ' == ' . $v . ' ||';
+                        }
+                        $rets = substr($rets, 0, -2);
+                        $rets .= ') ';
+                    }else{
+                        $this->error('select not in error line:' . __LINE__);
+                    }
+                    return $rets;
+                }, $tmp_condition);
+            }
+
+            $pos_and = stripos($tmp_condition, 'and');
+            if($pos_and != false){
+                $tmp_condition = str_replace('and', '&&', $tmp_condition);
+            }		
+
+            $pos_or = stripos($tmp_condition, 'or');
+            if($pos_or != false){
+                $tmp_condition = str_replace('or', '||', $tmp_condition);
+            }		
+            $select['condition'] = str_replace('where', '', $tmp_condition );
+        }else{
+            $select['condition'] = '';
+        }
+
+        if($condition){
+            $sql = str_replace($condition, '', $sql);
+        }
+	
+	$delete['condition'] = $select['condition'];
+
+	$reg = "/\s*delete\s+from\s+(\w+)\s+/";
+	preg_match_all($reg, $sql, $sinfo);
+
+	if(isset($sinfo[1][0]) && $sinfo[1][0]){
+		$delete['table'] = $sinfo[1][0];
+	}else{
+		$this->error('update table name error line:'.__LINE__);
+	}
+
+	return $delete;
+    }
+
+    public function combine_condition_new($condition){
+	$co['$where'] = 'function(){ return ' . $condition . '}';
+	return $co;
+    }
+
     public function delete(){
-        $sql = $this->format_delete_sql($this->sql);
-        $delete_arr = $this->format_delete($sql);
-        $collection = $delete_arr['table'];
-        $condition = $this->combine_condition($delete_arr['condition']);
+        $sql = $this->sql;
+        $delete = $this->format_delete_sql_new($sql);
+        $collection = $delete['table'];
+        $condition = $this->combine_condition_new($delete['condition']);
         echo 'db.' . $collection . '.remove(' . json_encode($condition) . ')' ."\n";    
     }
 
@@ -712,7 +841,7 @@ array(4) {
         echo "\n" . $msg . "\n";exit;
     }
 }
-$d2 = "update testa set a = 1,b=2 where a = 3 ";
+$d2 = "delete from testa  where a in(1, 3) ";
 $stom = new transMongo;
 $stom->setSQL($d2);
-$stom->update();
+$stom->delete();
