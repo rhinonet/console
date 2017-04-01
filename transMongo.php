@@ -319,6 +319,9 @@ class transMongo{
             $co_arr['$where'] = 'function(){ return ' . $sql_arr['condition'] . ' }';
             $condition = json_encode($co_arr);
         }
+	if(isset($sql_arr['condition']) && !$sql_arr['condition']){
+	    $condition = '{}';
+	}
         if(isset($sql_arr['fields']) && $sql_arr['fields']){
             $field = ", " . json_encode($sql_arr['fields']);
         }
@@ -524,7 +527,7 @@ class transMongo{
         echo "\n" . $msg . "\n";exit;
     }
 }
-$d2 = "select a,b, c, d from testa where a in( 2,4) and b not in (3,5) ;";
+$d2 = "select a,b, c, d from testa ";
 $stom = new transMongo;
 $stom->setSQL($d2);
 $stom->select();
