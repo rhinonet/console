@@ -333,10 +333,195 @@ class transMongo{
 
     //--------end-select--------
 
-    public function update(){
+    //---------update-----------
 
+    public function format_update($sql){
+	//condition
+        $pos_condition = stripos($sql, 'where');
+        if($pos_condition !== false){
+            $condition = substr($sql, $pos_condition);
+            $tmp_condition = $condition;
+            $pos_between = stripos($tmp_condition, 'between');
+            if($pos_between !== false){
+                $tmp_condition = preg_replace_callback('/[\s]+([\w]+)[\s]+between\s+([\w]+)\s+and\s+([\w]+)\s*/', function($arr){
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $begin = isset($arr[2]) ? $arr[2] : '';
+                    $end = isset($arr[3]) ? $arr[3] : '';
+                    if(!($begin && $end && trim($begin) < trim($end))){
+                        $this->error('select between error line:' . __LINE__);
+                    }
+                    return ' (' . $key . ' >= ' . trim($begin) . ' && ' .  $key . ' <= ' . trim($end) . ') ';
+                }, $tmp_condition);
+            }
+
+
+            if(preg_match('/not\s+in/', $tmp_condition)){
+                //$tmp_condition = preg_match_all('/\s+(\w+)\s+not\s+in\s*\(\s*(\w+(\s*,\w+)*)\)/', $tmp_condition, $arr);
+                $tmp_condition = preg_replace_callback('/\s+(\w+)\s+not\s+in\s*\((\s*\w+(\s*,\s*\w+)*)\s*\)/', function($arr){
+
+/*array(4) {
+  [0]=>
+  string(17) " d not in (1,2,3)"
+  [1]=>
+  string(1) "d"
+  [2]=>
+  string(5) "1,2,3"
+  [3]=>
+  string(2) ",3"
+}*/
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $values = isset($arr[2]) ? $arr[2] : '';
+                    if(!($key && $values)){
+                        $this->error('select not in error line:' . __LINE__);
+                    }
+                    $tarr = explode(',', $values);
+                    $rets = ' (';
+                    if($tarr){
+                        foreach($tarr as $v){
+                            if($v === ''){
+                                $this->error('select not in error line:' . __LINE__);
+                            }
+                            $rets .= ' ' . $key . ' != ' . $v . ' ||';
+                        }
+                        $rets = substr($rets, 0, -2);
+                        $rets .= ') ';
+                    }else{
+                        $this->error('select not in error line:' . __LINE__);
+                    }
+                    return $rets;
+                }, $tmp_condition);
+            }
+
+            if(preg_match('/in/', $tmp_condition)){
+                $tmp_condition = preg_replace_callback('/\s+(\w+)\s+in\s*\(\s*(\w+(\s*,\s*\w+)*)\s*\)/', function($arr){
+/*array(4) {
+  [0]=>
+  string(13) " e in (1,2,3)"
+  [1]=>
+  string(1) "e"
+  [2]=>
+  string(5) "1,2,3"
+  [3]=>
+  string(2) ",3"
+}*/
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $values = isset($arr[2]) ? $arr[2] : '';
+                    if(!($key && $values)){
+                        $this->error('select in error line:' . __LINE__);
+                    }
+                    $tarr = explode(',', $values);
+                    $rets = ' (';
+                    if($tarr){
+                        foreach($tarr as $v){
+                            if($v === ''){
+                                $this->error('select not in error line:' . __LINE__);
+                            }
+                            $rets .= ' ' . $key . ' == ' . $v . ' ||';
+                        }
+                        $rets = substr($rets, 0, -2);
+                        $rets .= ') ';
+                    }else{
+                        $this->error('select not in error line:' . __LINE__);
+                    }
+                    return $rets;
+                }, $tmp_condition);
+            }
+
+            $pos_and = stripos($tmp_condition, 'and');
+            if($pos_and != false){
+                $tmp_condition = str_replace('and', '&&', $tmp_condition);
+            }		
+
+            $pos_or = stripos($tmp_condition, 'or');
+            if($pos_or != false){
+                $tmp_condition = str_replace('or', '||', $tmp_condition);
+            }		
+            $select['condition'] = str_replace('where', '', $tmp_condition );
+        }else{
+            $select['condition'] = '';
+        }
+
+        if($condition){
+            $sql = str_replace($condition, '', $sql);
+        }
+	
+	$update['condition'] = $select['condition'];
+/*
+array(4) {
+  [0]=>
+  array(1) {
+    [0]=>
+    string(27) "update testa set a = 1,b=2 "
+  }
+  [1]=>
+  array(1) {
+    [0]=>
+    string(5) "testa"
+  }
+  [2]=>
+  array(1) {
+    [0]=>
+    string(10) "a = 1,b=2 "
+  }
+  [3]=>
+  array(1) {
+    [0]=>
+    string(4) ",b=2"
+  }
+}*/
+	$reg = "/\s*update\s+(\w+)\s+set\s+(\w+\s*=\s*\w+(\s*,\s*\w+\s*=\s*\w+)*\s*)/";
+	preg_match_all($reg, $sql, $sinfo);
+	if(isset($sinfo[1][0]) && $sinfo[2][0]){
+		$farr = explode(',', $sinfo[2][0]);
+		if($farr){
+			foreach($farr as $kv){
+				$kv_arr = explode('=', $kv);
+				$key = trim($kv_arr[0]);
+				$value = trim($kv_arr[1]);
+				if($key == '' || $value === ''){
+					$this->error('update set error line:'.__LINE__);
+				}	
+				$update['$set'][$key] = $value;
+			}
+		}
+	}else{
+		$this->error('update set error line:'.__LINE__);
+	}
+
+	if(isset($sinfo[1][0]) && $sinfo[1][0]){
+		$update['table'] = $sinfo[1][0];
+	}else{
+		$this->error('update table name error line:'.__LINE__);
+	}
+
+	return $update;
     }
 
+    public function update(){
+	$sql = $this->sql;
+        $sql_arr = $this->format_update($sql);
+
+        if(isset($sql_arr['condition']) && $sql_arr['condition']){
+            $co_arr['$where'] = 'function(){ return ' . $sql_arr['condition'] . ' }';
+            $condition = json_encode($co_arr);
+        }
+	if(isset($sql_arr['condition']) && !$sql_arr['condition']){
+	    $condition = '{}';
+	}
+	if(isset($sql_arr['$set']) && $sql_arr['$set']){
+	    $set = ', ' . json_encode($sql_arr['$set']);
+	}else{
+	    $this->error('update set error line:'.__LINE__);
+	}
+        if(isset($sql_arr['table']) && $sql_arr['table']){
+            $collection = $sql_arr['table'];
+        }
+	if(1){
+		$multi = ", " . json_encode(['multi' => true]);
+	}
+        echo 'db.' . $collection . '.update(' . $condition . $set . $multi .")\n";exit;
+    }
+    //---end-update-------
 
     //------delete-------
 
@@ -527,7 +712,7 @@ class transMongo{
         echo "\n" . $msg . "\n";exit;
     }
 }
-$d2 = "select a,b, c, d from testa ";
+$d2 = "update testa set a = 1,b=2 where a = 3 ";
 $stom = new transMongo;
 $stom->setSQL($d2);
-$stom->select();
+$stom->update();
