@@ -1,10 +1,5 @@
 <?php
 
-$s1 = "select id from             testa where a = 1 and b = 2";
-$s2 = "select id from testa where a = 1 group by a";
-$i1 = "insert into testa ( a, b, c ) value (1,2,3)";
-$d1 = "delete from testa where a = 1 and b = 12 or b = 13 and c in (1,2,3) and d between 1 and 2";
-
 class transMongo{
     private $sql = '';
 
@@ -18,7 +13,248 @@ class transMongo{
 
     //-----------group--------------
 
+    private function format_group($sql){
+        $where = '';
+
+        $pos_group = stripos($sql, 'group');
+        if($pos_group !== false){
+            $group_t = substr($sql, $pos_group);
+            $tmp_group = $group_t;
+            preg_match_all('/group\s+by\s+(\w+(\s*,\s*\w+)*)/', $tmp_group, $arr);
+            if(!(isset($arr[1][0]) && $arr[1][0])){
+                $this->error("group error line:" . __LINE__); 
+            }else{
+                $tmp_str = $arr[1][0];
+                $group_arr = explode(',', $tmp_str);
+                if($group_arr){
+                    $tkey = [];
+                    foreach($group_arr as $v){
+                       $tkey[trim($v)] = 1; 
+                    }
+                    $group['key'] = $tkey;
+                } 
+            } 
+        }else{
+            $this->error('group error line:' . __LINE__);
+        }
+        if($group_t){
+            $sql = str_replace($group_t, '', $sql);
+        }
+
+        //condition
+        $pos_condition = stripos($sql, 'where');
+        if($pos_condition !== false){
+            $condition = substr($sql, $pos_condition);
+            $tmp_condition = $condition;
+            $pos_between = stripos($tmp_condition, 'between');
+            if($pos_between !== false){
+                $tmp_condition = preg_replace_callback('/[\s]+([\w]+)[\s]+between\s+([\w]+)\s+and\s+([\w]+)\s*/',      function($arr){
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $begin = isset($arr[2]) ? $arr[2] : '';
+                    $end = isset($arr[3]) ? $arr[3] : '';
+                    if(!($begin && $end && trim($begin) < trim($end))){
+                        $this->error('select between error line:' . __LINE__);
+                    }
+                    return ' (' . $key . ' >= ' . trim($begin) . ' && ' .  $key . ' <= ' . trim($end) . ') ';
+                }, $tmp_condition);
+            }
+
+
+            if(preg_match('/not\s+in/', $tmp_condition)){
+                //$tmp_condition = preg_match_all('/\s+(\w+)\s+not\s+in\s*\(\s*(\w+(\s*,\w+)*)\)/', $tmp_condition, $arr);
+                $tmp_condition = preg_replace_callback('/\s+(\w+)\s+not\s+in\s*\((\s*\w+(\s*,\s*\w+)*)\s*\)/', function($arr){
+
+/*array(4) {
+  [0]=>
+  string(17) " d not in (1,2,3)"
+  [1]=>
+  string(1) "d"
+  [2]=>
+  string(5) "1,2,3"
+  [3]=>
+  string(2) ",3"
+}*/
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $values = isset($arr[2]) ? $arr[2] : '';
+                    if(!($key && $values)){
+                        $this->error('select not in error line:' . __LINE__);
+                    }
+                    $tarr = explode(',', $values);
+                    $rets = ' (';
+                    if($tarr){
+                        foreach($tarr as $v){
+                            if($v === ''){
+                                $this->error('select not in error line:' . __LINE__);
+                            }
+                            $rets .= ' ' . $key . ' != ' . $v . ' ||';
+                        }
+                        $rets = substr($rets, 0, -2);
+                        $rets .= ') ';
+                    }else{
+                        $this->error('select not in error line:' . __LINE__);
+                    }
+                    return $rets;
+                }, $tmp_condition);
+            }
+
+            if(preg_match('/in/', $tmp_condition)){
+                $tmp_condition = preg_replace_callback('/\s+(\w+)\s+in\s*\(\s*(\w+(\s*,\s*\w+)*)\s*\)/', function($arr){
+/*array(4) {
+  [0]=>
+  string(13) " e in (1,2,3)"
+  [1]=>
+  string(1) "e"
+  [2]=>
+  string(5) "1,2,3"
+  [3]=>
+  string(2) ",3"
+}*/
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $values = isset($arr[2]) ? $arr[2] : '';
+                    if(!($key && $values)){
+                        $this->error('select in error line:' . __LINE__);
+                    }
+                    $tarr = explode(',', $values);
+                    $rets = ' (';
+                    if($tarr){
+                        foreach($tarr as $v){
+                            if($v === ''){
+                                $this->error('select not in error line:' . __LINE__);
+                            }
+                            $rets .= ' ' . $key . ' == ' . $v . ' ||';
+                        }
+                        $rets = substr($rets, 0, -2);
+                        $rets .= ') ';
+                    }else{
+                        $this->error('select not in error line:' . __LINE__);
+                    }
+                    return $rets;
+                }, $tmp_condition);
+            }
+
+            $pos_and = stripos($tmp_condition, 'and');
+            if($pos_and != false){
+                $tmp_condition = str_replace('and', '&&', $tmp_condition);
+            }		
+
+            $pos_or = stripos($tmp_condition, 'or');
+            if($pos_or != false){
+                $tmp_condition = str_replace('or', '||', $tmp_condition);
+            }		
+            $select['condition'] = str_replace('where', '', $tmp_condition );
+        }else{
+            $select['condition'] = '';
+        }
+
+        if($condition){
+            $sql = str_replace($condition, '', $sql);
+        }
+        $group['condition'] = $select['condition'];    
+
+        
+/*array(4) {
+  [0]=>
+  array(1) {
+    [0]=>
+    string(25) "select a, b,c from testa "
+  }
+  [1]=>
+  array(1) {
+    [0]=>
+    string(6) "a, b,c"
+  }
+  [2]=>
+  array(1) {
+    [0]=>
+    string(2) ",c"
+  }
+  [3]=>
+  array(1) {
+    [0]=>
+    string(5) "testa"
+  }
+}*/
+        if(stripos($sql, '*') !== false){
+            $reg = "/\s*select\s+[\*]\s+from\s+(\w+)\s+/";
+            preg_match_all($reg, $sql, $sinfo);
+
+            $select['filds'] = [];	
+            if(isset($sinfo[1][0]) && $sinfo[1][0]){
+                $select['table'] = $sinfo[1][0];
+            }else{
+                $this->error('select table name error line:'.__LINE__);
+            }
+        } else{
+            if(stripos($sql, 'as') !== false){
+                $reg = "/\s*select\s([\s\S]+)\s+from\s+(\w+)\s+/";
+                preg_match_all($reg, $sql, $sinfo);
+                if(isset($sinfo[1][0]) && $sinfo[1][0]){
+                    $farr = explode(',', $sinfo[1][0]);
+                    if($farr){
+                        $reg_sum = '/sum\((\w+)\)\s+as\s+(\w+)/';
+                        $reg_count = '/count\((\w+)\)\s+as\s+(\w+)/';
+                        $init = [];
+                        $redu = [];
+                        foreach($farr as $field){
+                            $f = trim($field);
+                            if(preg_match($reg_sum, $f)){
+                                preg_match_all($reg_sum, $f, $sum_arr);
+                                $init[$sum_arr[2][0]] = 0;
+                                $redu[] = 'p.'.$sum_arr[2][0] . ' += o.'. $sum_arr[1][0]; 
+                            }elseif(preg_match($reg_count, $f)){
+                                preg_match_all($reg_count, $f, $count_arr);
+                                $init[$count_arr[2][0]] = 0;
+                                $redu[] = 'p.'.$count_arr['2']['0'] . '++';
+                            }else{
+                                $redu[] = 'p.' . $f . '= o.' . $f;        
+                            }
+                        }
+                        var_dump($init, $redu);
+                    }
+                }else{
+                    $this->error('select fields error line:'.__LINE__);
+                }
+                if(isset($sinfo[2][0]) && $sinfo[2][0]){
+                    $group['table'] = $sinfo[2][0];
+                }else{
+                    $this->error('select table name error line:'.__LINE__);
+                }
+
+            }else{
+                $reg = "/\s*select\s+(\w+(\s*,\s*\w+)*)\s+from\s+(\w+)\s+/";
+                preg_match_all($reg, $sql, $sinfo);
+                if(isset($sinfo[1][0]) && $sinfo[1][0]){
+                    $farr = explode(',', $sinfo[1][0]);
+                    if($farr){
+                        $redu = [];
+                        foreach($farr as $fname){
+                            $redu[] = 'p.' . $fname . '= o.' . $fname; 
+                        }
+                    }
+                    var_dump($redu);
+                }else{
+                    $this->error('select fields error line:'.__LINE__);
+                }
+                if(isset($sinfo[3][0]) && $sinfo[3][0]){
+                    $group['table'] = $sinfo[3][0];
+                }else{
+                    $this->error('select table name error line:'.__LINE__);
+                }
+            }
+        }
+
+
+
+
+        $group['initial'] = [];
+        $group['reduce'] = [];
+        return $group; 
+    }
+
     public function group(){
+        $sql = $this->sql;
+        $sql_arr = $this->format_group($sql);
+
 
     }
 
@@ -841,7 +1077,9 @@ array(4) {
         echo "\n" . $msg . "\n";exit;
     }
 }
-$d2 = "delete from testa  where a in(1, 3) ";
+
+$d3 = "select a,b,sum(c) csum from coll where active=1 group by a ,b ";
+$d2 = "select a,b,c from testa where a = 1 group by a,b, c ";
 $stom = new transMongo;
 $stom->setSQL($d2);
-$stom->delete();
+$stom->group();
