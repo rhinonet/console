@@ -152,38 +152,10 @@ class transMongo{
         $group['condition'] = $select['condition'];    
 
         
-/*array(4) {
-  [0]=>
-  array(1) {
-    [0]=>
-    string(25) "select a, b,c from testa "
-  }
-  [1]=>
-  array(1) {
-    [0]=>
-    string(6) "a, b,c"
-  }
-  [2]=>
-  array(1) {
-    [0]=>
-    string(2) ",c"
-  }
-  [3]=>
-  array(1) {
-    [0]=>
-    string(5) "testa"
-  }
-}*/
+        $init = [];
+        $redu = [];
         if(stripos($sql, '*') !== false){
-            $reg = "/\s*select\s+[\*]\s+from\s+(\w+)\s+/";
-            preg_match_all($reg, $sql, $sinfo);
-
-            $select['filds'] = [];	
-            if(isset($sinfo[1][0]) && $sinfo[1][0]){
-                $select['table'] = $sinfo[1][0];
-            }else{
-                $this->error('select table name error line:'.__LINE__);
-            }
+            $this->error("group error line:" . __LINE__);
         } else{
             if(stripos($sql, 'as') !== false){
                 $reg = "/\s*select\s([\s\S]+)\s+from\s+(\w+)\s+/";
@@ -193,8 +165,6 @@ class transMongo{
                     if($farr){
                         $reg_sum = '/sum\((\w+)\)\s+as\s+(\w+)/';
                         $reg_count = '/count\((\w+)\)\s+as\s+(\w+)/';
-                        $init = [];
-                        $redu = [];
                         foreach($farr as $field){
                             $f = trim($field);
                             if(preg_match($reg_sum, $f)){
@@ -206,10 +176,9 @@ class transMongo{
                                 $init[$count_arr[2][0]] = 0;
                                 $redu[] = 'p.'.$count_arr['2']['0'] . '++';
                             }else{
-                                $redu[] = 'p.' . $f . '= o.' . $f;        
+                                $redu[] = 'p.' . $f . ' = o.' . $f;        
                             }
                         }
-                        var_dump($init, $redu);
                     }
                 }else{
                     $this->error('select fields error line:'.__LINE__);
@@ -226,12 +195,10 @@ class transMongo{
                 if(isset($sinfo[1][0]) && $sinfo[1][0]){
                     $farr = explode(',', $sinfo[1][0]);
                     if($farr){
-                        $redu = [];
                         foreach($farr as $fname){
-                            $redu[] = 'p.' . $fname . '= o.' . $fname; 
+                            $redu[] = 'p.' . $fname . ' = o.' . $fname; 
                         }
                     }
-                    var_dump($redu);
                 }else{
                     $this->error('select fields error line:'.__LINE__);
                 }
@@ -243,19 +210,47 @@ class transMongo{
             }
         }
 
-
-
-
-        $group['initial'] = [];
-        $group['reduce'] = [];
+        $group['initial'] = $init;
+        $group['reduce'] = $redu;
+        
         return $group; 
     }
 
     public function group(){
         $sql = $this->sql;
-        $sql_arr = $this->format_group($sql);
+        $group = $this->format_group($sql);
+        
+        $collection = $group['table'];
+        $key = '{}';
+        if($group['key']){
+           $key = json_encode($group['key']); 
+        }
 
+        $reduce = 'function(o, p){  }';
+        if($group['reduce']){
+            $l = 'function(o, p){';
+            $r = '}';
+            $redu = ' ';
+            foreach($group['reduce'] as $v){
+                $redu .= $v.',';
+            }
+            $redu = rtrim($redu, ',');
+            $redu .= '; ';
+            $reduce = $l . $redu . $r;
+        }
 
+        $condition = '{}';
+        if($group['condition']){
+            $tt['$where'] = 'function(){ return ' . $group['condition'] .'; }';
+            $condition = json_encode($tt); 
+        }
+
+        $initial = '{}';
+        if($group['initial']){
+            $initial = json_encode($group['initial']);
+        }
+
+        echo 'db.'.$collection.'.group({"key":'.$key. ', "reduce":' . $reduce . '", initial":' . $initial . ', "cond":' . $condition .'})';exit;
     }
 
     //-----------end-group----------
@@ -1079,7 +1074,7 @@ array(4) {
 }
 
 $d3 = "select a,b,sum(c) csum from coll where active=1 group by a ,b ";
-$d2 = "select a,b,c from testa where a = 1 group by a,b, c ";
+$d2 = "select a,b,c, sum(c) as cc , count(c) as dd from testa where a = 1 group by a,b, c ";
 $stom = new transMongo;
 $stom->setSQL($d2);
 $stom->group();
