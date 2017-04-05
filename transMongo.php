@@ -140,7 +140,12 @@ class transMongo{
             $pos_or = stripos($tmp_condition, 'or');
             if($pos_or != false){
                 $tmp_condition = str_replace('or', '||', $tmp_condition);
-            }		
+            }	
+	    
+	    $tmp_condition = str_replace('!=', '<>', $tmp_condition);
+	    $tmp_condition = str_replace('=', '==', $tmp_condition);
+	    $tmp_condition = str_replace('<>', '!=', $tmp_condition);
+			
             $select['condition'] = str_replace('where', '', $tmp_condition );
         }else{
             $select['condition'] = '';
@@ -453,6 +458,11 @@ class transMongo{
             if($pos_or != false){
                 $tmp_condition = str_replace('or', '||', $tmp_condition);
             }		
+	    
+	    $tmp_condition = str_replace('!=', '<>', $tmp_condition);
+	    $tmp_condition = str_replace('=', '==', $tmp_condition);
+	    $tmp_condition = str_replace('<>', '!=', $tmp_condition);
+
             $select['condition'] = str_replace('where', '', $tmp_condition );
         }else{
             $select['condition'] = '';
@@ -666,7 +676,12 @@ class transMongo{
             $pos_or = stripos($tmp_condition, 'or');
             if($pos_or != false){
                 $tmp_condition = str_replace('or', '||', $tmp_condition);
-            }		
+            }
+		
+	    $tmp_condition = str_replace('!=', '<>', $tmp_condition);
+	    $tmp_condition = str_replace('=', '==', $tmp_condition);
+	    $tmp_condition = str_replace('<>', '!=', $tmp_condition);
+
             $select['condition'] = str_replace('where', '', $tmp_condition );
         }else{
             $select['condition'] = '';
@@ -984,6 +999,11 @@ array(4) {
             if($pos_or != false){
                 $tmp_condition = str_replace('or', '||', $tmp_condition);
             }		
+
+	    $tmp_condition = str_replace('!=', '<>', $tmp_condition);
+	    $tmp_condition = str_replace('=', '==', $tmp_condition);
+	    $tmp_condition = str_replace('<>', '!=', $tmp_condition);
+
             $select['condition'] = str_replace('where', '', $tmp_condition );
         }else{
             $select['condition'] = '';
