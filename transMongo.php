@@ -4,7 +4,7 @@ class transMongo{
     private $sql = '';
 
     public function __construct($sql = ''){
-	$this->sql = $sql;
+        $this->sql = $sql;
     }
 
     public function setSQL($sql){
@@ -16,27 +16,25 @@ class transMongo{
     }
 
     public function doTrans(){
-	$sql = $this->sql;
-	if(stripos($sql, 'group')){
-		$this->group($sql);
-	}elseif(stripos($sql, 'select')){
-		$this->select($sql);
-	}elseif(stripos($sql, 'update')){
-		$this->update($sql);
-	}elseif(stripos($sql, 'delete')){
-		$this->delete($sql);
-	}elseif(stripos($sql, 'insert')){
-		$this->insert($sql);
-	}else{
-	    $this->error('sql error error:' . __LINE__);
-	} 
+        $sql = $this->sql;
+        if(stripos($sql, 'group')){
+            $this->group($sql);
+        }elseif(stripos($sql, 'select')){
+            $this->select($sql);
+        }elseif(stripos($sql, 'update')){
+            $this->update($sql);
+        }elseif(stripos($sql, 'delete')){
+            $this->delete($sql);
+        }elseif(stripos($sql, 'insert')){
+            $this->insert($sql);
+        }else{
+            $this->error('sql error error:' . __LINE__);
+        } 
     }
 
     //-----------group--------------
 
     private function format_group($sql){
-        $where = '';
-
         $pos_group = stripos($sql, 'group');
         if($pos_group !== false){
             $group_t = substr($sql, $pos_group);
@@ -50,7 +48,7 @@ class transMongo{
                 if($group_arr){
                     $tkey = [];
                     foreach($group_arr as $v){
-                       $tkey[trim($v)] = 1; 
+                        $tkey[trim($v)] = 1; 
                     }
                     $group['key'] = $tkey;
                 } 
@@ -152,8 +150,8 @@ class transMongo{
                     return $rets;
                 }, $tmp_condition);
             }
-            
-            
+
+
             if(preg_match('/(\w+)\s*!=\s*(\w+)/', $tmp_condition)){
                 $tmp_condition = preg_replace_callback('/(\w+)\s*!=\s*(\w+)/', function($arr){
                     /*array(3) {
@@ -169,12 +167,12 @@ class transMongo{
                     if(!($key && $value)){
                         $this->error('select in error line:' . __LINE__);
                     }
-                    
+
                     $rets = 'this.'.$key. ' != ' . $value;
                     return $rets;
                 }, $tmp_condition);
             }
-			
+
             if(preg_match('/(\w+)\s*=\s*(\w+)/', $tmp_condition)){
                 $tmp_condition = preg_replace_callback('/(\w+)\s*=\s*(\w+)/', function($arr){
                     /*array(3) {
@@ -191,7 +189,7 @@ class transMongo{
                     if(!($key && $value)){
                         $this->error('select in error line:' . __LINE__);
                     }
-                    
+
                     $rets = 'this.'.$key. ' == ' . $value;
                     return $rets;
                 }, $tmp_condition);
@@ -207,7 +205,7 @@ class transMongo{
             if($pos_or != false){
                 $tmp_condition = str_replace('or', '||', $tmp_condition);
             }	
-	    
+
             $select['condition'] = str_replace('where', '', $tmp_condition );
         }else{
             $select['condition'] = '';
@@ -218,7 +216,7 @@ class transMongo{
         }
         $group['condition'] = $select['condition'];    
 
-        
+
         $init = [];
         $redu = [];
         if(stripos($sql, '*') !== false){
@@ -279,18 +277,18 @@ class transMongo{
 
         $group['initial'] = $init;
         $group['reduce'] = $redu;
-        
+
         return $group; 
     }
 
     public function group(){
         $sql = $this->sql;
         $group = $this->format_group($sql);
-        
+
         $collection = $group['table'];
         $key = '{}';
         if($group['key']){
-           $key = json_encode($group['key']); 
+            $key = json_encode($group['key']); 
         }
 
         $reduce = 'function(o, p){  }';
@@ -427,14 +425,14 @@ class transMongo{
             $tmp_condition = $condition;
             $pos_between = stripos($tmp_condition, 'between');
             if($pos_between !== false){
-                $tmp_condition = preg_replace_callback('/[\s]+([\w]+)[\s]+between\s+([\w]+)\s+and\s+([\w]+)\s*/', function($arr){
+                $tmp_condition = preg_replace_callback('/[\s]+([\w]+)[\s]+between\s+([\w]+)\s+and\s+([\w]+)\s*/',      function($arr){
                     $key = isset($arr[1]) ? $arr[1] : ''; 
                     $begin = isset($arr[2]) ? $arr[2] : '';
                     $end = isset($arr[3]) ? $arr[3] : '';
                     if(!($begin && $end && trim($begin) < trim($end))){
                         $this->error('select between error line:' . __LINE__);
                     }
-                    return ' (' . $key . ' >= ' . trim($begin) . ' && ' .  $key . ' <= ' . trim($end) . ') ';
+                    return ' (' . ' this.' . $key . ' >= ' . trim($begin) . ' && ' .  ' this.'.  $key . ' <= ' . trim($end) . ') ';
                 }, $tmp_condition);
             }
 
@@ -465,7 +463,7 @@ class transMongo{
                             if($v === ''){
                                 $this->error('select not in error line:' . __LINE__);
                             }
-                            $rets .= ' ' . $key . ' != ' . $v . ' ||';
+                            $rets .= ' this.' . $key . ' != ' . $v . ' ||';
                         }
                         $rets = substr($rets, 0, -2);
                         $rets .= ') ';
@@ -500,7 +498,7 @@ class transMongo{
                             if($v === ''){
                                 $this->error('select not in error line:' . __LINE__);
                             }
-                            $rets .= ' ' . $key . ' == ' . $v . ' ||';
+                            $rets .= ' this.' . $key . ' == ' . $v . ' ||';
                         }
                         $rets = substr($rets, 0, -2);
                         $rets .= ') ';
@@ -511,6 +509,51 @@ class transMongo{
                 }, $tmp_condition);
             }
 
+
+            if(preg_match('/(\w+)\s*!=\s*(\w+)/', $tmp_condition)){
+                $tmp_condition = preg_replace_callback('/(\w+)\s*!=\s*(\w+)/', function($arr){
+                    /*array(3) {
+                          [0]=>
+                            string(5) "a != 1"
+                          [1]=>
+                            string(1) "a"
+                          [2]=>
+                            string(1) "1"
+                    }*/
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $value = isset($arr[2]) ? $arr[2] : '';
+                    if(!($key && $value)){
+                        $this->error('select in error line:' . __LINE__);
+                    }
+
+                    $rets = 'this.'.$key. ' != ' . $value;
+                    return $rets;
+                }, $tmp_condition);
+            }
+
+            if(preg_match('/(\w+)\s*=\s*(\w+)/', $tmp_condition)){
+                $tmp_condition = preg_replace_callback('/(\w+)\s*=\s*(\w+)/', function($arr){
+                    /*array(3) {
+                          [0]=>
+                            string(5) "a = 1"
+                          [1]=>
+                            string(1) "a"
+                          [2]=>
+                            string(1) "1"
+                    }*/
+
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $value = isset($arr[2]) ? $arr[2] : '';
+                    if(!($key && $value)){
+                        $this->error('select in error line:' . __LINE__);
+                    }
+
+                    $rets = 'this.'.$key. ' == ' . $value;
+                    return $rets;
+                }, $tmp_condition);
+
+            }
+
             $pos_and = stripos($tmp_condition, 'and');
             if($pos_and != false){
                 $tmp_condition = str_replace('and', '&&', $tmp_condition);
@@ -519,11 +562,7 @@ class transMongo{
             $pos_or = stripos($tmp_condition, 'or');
             if($pos_or != false){
                 $tmp_condition = str_replace('or', '||', $tmp_condition);
-            }		
-	    
-	    $tmp_condition = str_replace('!=', '<>', $tmp_condition);
-	    $tmp_condition = str_replace('=', '==', $tmp_condition);
-	    $tmp_condition = str_replace('<>', '!=', $tmp_condition);
+            }	
 
             $select['condition'] = str_replace('where', '', $tmp_condition );
         }else{
@@ -622,9 +661,9 @@ class transMongo{
             $co_arr['$where'] = 'function(){ return ' . $sql_arr['condition'] . ' }';
             $condition = json_encode($co_arr);
         }
-	if(isset($sql_arr['condition']) && !$sql_arr['condition']){
-	    $condition = '{}';
-	}
+        if(isset($sql_arr['condition']) && !$sql_arr['condition']){
+            $condition = '{}';
+        }
         if(isset($sql_arr['fields']) && $sql_arr['fields']){
             $field = ", " . json_encode($sql_arr['fields']);
         }
@@ -639,21 +678,21 @@ class transMongo{
     //---------update-----------
 
     public function format_update($sql){
-	//condition
+        //condition
         $pos_condition = stripos($sql, 'where');
         if($pos_condition !== false){
             $condition = substr($sql, $pos_condition);
             $tmp_condition = $condition;
             $pos_between = stripos($tmp_condition, 'between');
             if($pos_between !== false){
-                $tmp_condition = preg_replace_callback('/[\s]+([\w]+)[\s]+between\s+([\w]+)\s+and\s+([\w]+)\s*/', function($arr){
+                $tmp_condition = preg_replace_callback('/[\s]+([\w]+)[\s]+between\s+([\w]+)\s+and\s+([\w]+)\s*/',      function($arr){
                     $key = isset($arr[1]) ? $arr[1] : ''; 
                     $begin = isset($arr[2]) ? $arr[2] : '';
                     $end = isset($arr[3]) ? $arr[3] : '';
                     if(!($begin && $end && trim($begin) < trim($end))){
                         $this->error('select between error line:' . __LINE__);
                     }
-                    return ' (' . $key . ' >= ' . trim($begin) . ' && ' .  $key . ' <= ' . trim($end) . ') ';
+                    return ' (' . ' this.' . $key . ' >= ' . trim($begin) . ' && ' .  ' this.'.  $key . ' <= ' . trim($end) . ') ';
                 }, $tmp_condition);
             }
 
@@ -684,7 +723,7 @@ class transMongo{
                             if($v === ''){
                                 $this->error('select not in error line:' . __LINE__);
                             }
-                            $rets .= ' ' . $key . ' != ' . $v . ' ||';
+                            $rets .= ' this.' . $key . ' != ' . $v . ' ||';
                         }
                         $rets = substr($rets, 0, -2);
                         $rets .= ') ';
@@ -719,7 +758,7 @@ class transMongo{
                             if($v === ''){
                                 $this->error('select not in error line:' . __LINE__);
                             }
-                            $rets .= ' ' . $key . ' == ' . $v . ' ||';
+                            $rets .= ' this.' . $key . ' == ' . $v . ' ||';
                         }
                         $rets = substr($rets, 0, -2);
                         $rets .= ') ';
@@ -730,6 +769,51 @@ class transMongo{
                 }, $tmp_condition);
             }
 
+
+            if(preg_match('/(\w+)\s*!=\s*(\w+)/', $tmp_condition)){
+                $tmp_condition = preg_replace_callback('/(\w+)\s*!=\s*(\w+)/', function($arr){
+                    /*array(3) {
+                          [0]=>
+                            string(5) "a != 1"
+                          [1]=>
+                            string(1) "a"
+                          [2]=>
+                            string(1) "1"
+                    }*/
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $value = isset($arr[2]) ? $arr[2] : '';
+                    if(!($key && $value)){
+                        $this->error('select in error line:' . __LINE__);
+                    }
+
+                    $rets = 'this.'.$key. ' != ' . $value;
+                    return $rets;
+                }, $tmp_condition);
+            }
+
+            if(preg_match('/(\w+)\s*=\s*(\w+)/', $tmp_condition)){
+                $tmp_condition = preg_replace_callback('/(\w+)\s*=\s*(\w+)/', function($arr){
+                    /*array(3) {
+                          [0]=>
+                            string(5) "a = 1"
+                          [1]=>
+                            string(1) "a"
+                          [2]=>
+                            string(1) "1"
+                    }*/
+
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $value = isset($arr[2]) ? $arr[2] : '';
+                    if(!($key && $value)){
+                        $this->error('select in error line:' . __LINE__);
+                    }
+
+                    $rets = 'this.'.$key. ' == ' . $value;
+                    return $rets;
+                }, $tmp_condition);
+
+            }
+
             $pos_and = stripos($tmp_condition, 'and');
             if($pos_and != false){
                 $tmp_condition = str_replace('and', '&&', $tmp_condition);
@@ -738,12 +822,7 @@ class transMongo{
             $pos_or = stripos($tmp_condition, 'or');
             if($pos_or != false){
                 $tmp_condition = str_replace('or', '||', $tmp_condition);
-            }
-		
-	    $tmp_condition = str_replace('!=', '<>', $tmp_condition);
-	    $tmp_condition = str_replace('=', '==', $tmp_condition);
-	    $tmp_condition = str_replace('<>', '!=', $tmp_condition);
-
+            }	
             $select['condition'] = str_replace('where', '', $tmp_condition );
         }else{
             $select['condition'] = '';
@@ -752,8 +831,8 @@ class transMongo{
         if($condition){
             $sql = str_replace($condition, '', $sql);
         }
-	
-	$update['condition'] = $select['condition'];
+
+        $update['condition'] = $select['condition'];
 /*
 array(4) {
   [0]=>
@@ -777,56 +856,56 @@ array(4) {
     string(4) ",b=2"
   }
 }*/
-	$reg = "/\s*update\s+(\w+)\s+set\s+(\w+\s*=\s*\w+(\s*,\s*\w+\s*=\s*\w+)*\s*)/";
-	preg_match_all($reg, $sql, $sinfo);
-	if(isset($sinfo[2][0]) && $sinfo[2][0]){
-		$farr = explode(',', $sinfo[2][0]);
-		if($farr){
-			foreach($farr as $kv){
-				$kv_arr = explode('=', $kv);
-				$key = trim($kv_arr[0]);
-				$value = trim($kv_arr[1]);
-				if($key == '' || $value === ''){
-					$this->error('update set error line:'.__LINE__);
-				}	
-				$update['$set'][$key] = $value;
-			}
-		}
-	}else{
-		$this->error('update set error line:'.__LINE__);
-	}
+        $reg = "/\s*update\s+(\w+)\s+set\s+(\w+\s*=\s*\w+(\s*,\s*\w+\s*=\s*\w+)*\s*)/";
+        preg_match_all($reg, $sql, $sinfo);
+        if(isset($sinfo[2][0]) && $sinfo[2][0]){
+            $farr = explode(',', $sinfo[2][0]);
+            if($farr){
+                foreach($farr as $kv){
+                    $kv_arr = explode('=', $kv);
+                    $key = trim($kv_arr[0]);
+                    $value = trim($kv_arr[1]);
+                    if($key == '' || $value === ''){
+                        $this->error('update set error line:'.__LINE__);
+                    }	
+                    $update['$set'][$key] = $value;
+                }
+            }
+        }else{
+            $this->error('update set error line:'.__LINE__);
+        }
 
-	if(isset($sinfo[1][0]) && $sinfo[1][0]){
-		$update['table'] = $sinfo[1][0];
-	}else{
-		$this->error('update table name error line:'.__LINE__);
-	}
+        if(isset($sinfo[1][0]) && $sinfo[1][0]){
+            $update['table'] = $sinfo[1][0];
+        }else{
+            $this->error('update table name error line:'.__LINE__);
+        }
 
-	return $update;
+        return $update;
     }
 
     public function update(){
-	$sql = $this->sql;
+        $sql = $this->sql;
         $sql_arr = $this->format_update($sql);
 
         if(isset($sql_arr['condition']) && $sql_arr['condition']){
             $co_arr['$where'] = 'function(){ return ' . $sql_arr['condition'] . ' }';
             $condition = json_encode($co_arr);
         }
-	if(isset($sql_arr['condition']) && !$sql_arr['condition']){
-	    $condition = '{}';
-	}
-	if(isset($sql_arr['$set']) && $sql_arr['$set']){
-	    $set = ', ' . json_encode($sql_arr['$set']);
-	}else{
-	    $this->error('update set error line:'.__LINE__);
-	}
+        if(isset($sql_arr['condition']) && !$sql_arr['condition']){
+            $condition = '{}';
+        }
+        if(isset($sql_arr['$set']) && $sql_arr['$set']){
+            $set = ', ' . json_encode($sql_arr['$set']);
+        }else{
+            $this->error('update set error line:'.__LINE__);
+        }
         if(isset($sql_arr['table']) && $sql_arr['table']){
             $collection = $sql_arr['table'];
         }
-	if(1){
-		$multi = ", " . json_encode(['multi' => true]);
-	}
+        if(1){
+            $multi = ", " . json_encode(['multi' => true]);
+        }
         echo 'db.' . $collection . '.update(' . $condition . $set . $multi .")\n";exit;
     }
     //---end-update-------
@@ -961,21 +1040,21 @@ array(4) {
     }
 
     private function format_delete_sql_new($sql){
-	//condition
+        //condition
         $pos_condition = stripos($sql, 'where');
         if($pos_condition !== false){
             $condition = substr($sql, $pos_condition);
             $tmp_condition = $condition;
             $pos_between = stripos($tmp_condition, 'between');
             if($pos_between !== false){
-                $tmp_condition = preg_replace_callback('/[\s]+([\w]+)[\s]+between\s+([\w]+)\s+and\s+([\w]+)\s*/', function($arr){
+                $tmp_condition = preg_replace_callback('/[\s]+([\w]+)[\s]+between\s+([\w]+)\s+and\s+([\w]+)\s*/',      function($arr){
                     $key = isset($arr[1]) ? $arr[1] : ''; 
                     $begin = isset($arr[2]) ? $arr[2] : '';
                     $end = isset($arr[3]) ? $arr[3] : '';
                     if(!($begin && $end && trim($begin) < trim($end))){
                         $this->error('select between error line:' . __LINE__);
                     }
-                    return ' (' . $key . ' >= ' . trim($begin) . ' && ' .  $key . ' <= ' . trim($end) . ') ';
+                    return ' (' . ' this.' . $key . ' >= ' . trim($begin) . ' && ' .  ' this.'.  $key . ' <= ' . trim($end) . ') ';
                 }, $tmp_condition);
             }
 
@@ -1006,7 +1085,7 @@ array(4) {
                             if($v === ''){
                                 $this->error('select not in error line:' . __LINE__);
                             }
-                            $rets .= ' ' . $key . ' != ' . $v . ' ||';
+                            $rets .= ' this.' . $key . ' != ' . $v . ' ||';
                         }
                         $rets = substr($rets, 0, -2);
                         $rets .= ') ';
@@ -1041,7 +1120,7 @@ array(4) {
                             if($v === ''){
                                 $this->error('select not in error line:' . __LINE__);
                             }
-                            $rets .= ' ' . $key . ' == ' . $v . ' ||';
+                            $rets .= ' this.' . $key . ' == ' . $v . ' ||';
                         }
                         $rets = substr($rets, 0, -2);
                         $rets .= ') ';
@@ -1052,6 +1131,51 @@ array(4) {
                 }, $tmp_condition);
             }
 
+
+            if(preg_match('/(\w+)\s*!=\s*(\w+)/', $tmp_condition)){
+                $tmp_condition = preg_replace_callback('/(\w+)\s*!=\s*(\w+)/', function($arr){
+                    /*array(3) {
+                          [0]=>
+                            string(5) "a != 1"
+                          [1]=>
+                            string(1) "a"
+                          [2]=>
+                            string(1) "1"
+                    }*/
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $value = isset($arr[2]) ? $arr[2] : '';
+                    if(!($key && $value)){
+                        $this->error('select in error line:' . __LINE__);
+                    }
+
+                    $rets = 'this.'.$key. ' != ' . $value;
+                    return $rets;
+                }, $tmp_condition);
+            }
+
+            if(preg_match('/(\w+)\s*=\s*(\w+)/', $tmp_condition)){
+                $tmp_condition = preg_replace_callback('/(\w+)\s*=\s*(\w+)/', function($arr){
+                    /*array(3) {
+                          [0]=>
+                            string(5) "a = 1"
+                          [1]=>
+                            string(1) "a"
+                          [2]=>
+                            string(1) "1"
+                    }*/
+
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $value = isset($arr[2]) ? $arr[2] : '';
+                    if(!($key && $value)){
+                        $this->error('select in error line:' . __LINE__);
+                    }
+
+                    $rets = 'this.'.$key. ' == ' . $value;
+                    return $rets;
+                }, $tmp_condition);
+
+            }
+
             $pos_and = stripos($tmp_condition, 'and');
             if($pos_and != false){
                 $tmp_condition = str_replace('and', '&&', $tmp_condition);
@@ -1060,12 +1184,7 @@ array(4) {
             $pos_or = stripos($tmp_condition, 'or');
             if($pos_or != false){
                 $tmp_condition = str_replace('or', '||', $tmp_condition);
-            }		
-
-	    $tmp_condition = str_replace('!=', '<>', $tmp_condition);
-	    $tmp_condition = str_replace('=', '==', $tmp_condition);
-	    $tmp_condition = str_replace('<>', '!=', $tmp_condition);
-
+            }	
             $select['condition'] = str_replace('where', '', $tmp_condition );
         }else{
             $select['condition'] = '';
@@ -1074,24 +1193,24 @@ array(4) {
         if($condition){
             $sql = str_replace($condition, '', $sql);
         }
-	
-	$delete['condition'] = $select['condition'];
 
-	$reg = "/\s*delete\s+from\s+(\w+)\s+/";
-	preg_match_all($reg, $sql, $sinfo);
+        $delete['condition'] = $select['condition'];
 
-	if(isset($sinfo[1][0]) && $sinfo[1][0]){
-		$delete['table'] = $sinfo[1][0];
-	}else{
-		$this->error('update table name error line:'.__LINE__);
-	}
+        $reg = "/\s*delete\s+from\s+(\w+)\s+/";
+        preg_match_all($reg, $sql, $sinfo);
 
-	return $delete;
+        if(isset($sinfo[1][0]) && $sinfo[1][0]){
+            $delete['table'] = $sinfo[1][0];
+        }else{
+            $this->error('update table name error line:'.__LINE__);
+        }
+
+        return $delete;
     }
 
     public function combine_condition_new($condition){
-	$co['$where'] = 'function(){ return ' . $condition . '}';
-	return $co;
+        $co['$where'] = 'function(){ return ' . $condition . '}';
+        return $co;
     }
 
     public function delete(){
