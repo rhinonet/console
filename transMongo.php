@@ -76,7 +76,7 @@ class transMongo{
                     if(!($begin && $end && trim($begin) < trim($end))){
                         $this->error('select between error line:' . __LINE__);
                     }
-                    return ' (' . $key . ' >= ' . trim($begin) . ' && ' .  $key . ' <= ' . trim($end) . ') ';
+                    return ' (' . ' this.' . $key . ' >= ' . trim($begin) . ' && ' .  ' this.'.  $key . ' <= ' . trim($end) . ') ';
                 }, $tmp_condition);
             }
 
@@ -107,7 +107,7 @@ class transMongo{
                             if($v === ''){
                                 $this->error('select not in error line:' . __LINE__);
                             }
-                            $rets .= ' ' . $key . ' != ' . $v . ' ||';
+                            $rets .= ' this.' . $key . ' != ' . $v . ' ||';
                         }
                         $rets = substr($rets, 0, -2);
                         $rets .= ') ';
@@ -142,7 +142,7 @@ class transMongo{
                             if($v === ''){
                                 $this->error('select not in error line:' . __LINE__);
                             }
-                            $rets .= ' ' . $key . ' == ' . $v . ' ||';
+                            $rets .= ' this.' . $key . ' == ' . $v . ' ||';
                         }
                         $rets = substr($rets, 0, -2);
                         $rets .= ') ';
@@ -151,6 +151,51 @@ class transMongo{
                     }
                     return $rets;
                 }, $tmp_condition);
+            }
+            
+            
+            if(preg_match('/(\w+)\s*!=\s*(\w+)/', $tmp_condition)){
+                $tmp_condition = preg_replace_callback('/(\w+)\s*!=\s*(\w+)/', function($arr){
+                    /*array(3) {
+                          [0]=>
+                            string(5) "a != 1"
+                          [1]=>
+                            string(1) "a"
+                          [2]=>
+                            string(1) "1"
+                    }*/
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $value = isset($arr[2]) ? $arr[2] : '';
+                    if(!($key && $value)){
+                        $this->error('select in error line:' . __LINE__);
+                    }
+                    
+                    $rets = 'this.'.$key. ' != ' . $value;
+                    return $rets;
+                }, $tmp_condition);
+            }
+			
+            if(preg_match('/(\w+)\s*=\s*(\w+)/', $tmp_condition)){
+                $tmp_condition = preg_replace_callback('/(\w+)\s*=\s*(\w+)/', function($arr){
+                    /*array(3) {
+                          [0]=>
+                            string(5) "a = 1"
+                          [1]=>
+                            string(1) "a"
+                          [2]=>
+                            string(1) "1"
+                    }*/
+
+                    $key = isset($arr[1]) ? $arr[1] : ''; 
+                    $value = isset($arr[2]) ? $arr[2] : '';
+                    if(!($key && $value)){
+                        $this->error('select in error line:' . __LINE__);
+                    }
+                    
+                    $rets = 'this.'.$key. ' == ' . $value;
+                    return $rets;
+                }, $tmp_condition);
+
             }
 
             $pos_and = stripos($tmp_condition, 'and');
@@ -163,10 +208,6 @@ class transMongo{
                 $tmp_condition = str_replace('or', '||', $tmp_condition);
             }	
 	    
-	    $tmp_condition = str_replace('!=', '<>', $tmp_condition);
-	    $tmp_condition = str_replace('=', '==', $tmp_condition);
-	    $tmp_condition = str_replace('<>', '!=', $tmp_condition);
-			
             $select['condition'] = str_replace('where', '', $tmp_condition );
         }else{
             $select['condition'] = '';
@@ -276,7 +317,7 @@ class transMongo{
             $initial = json_encode($group['initial']);
         }
 
-        echo 'db.'.$collection.'.group({"key":'.$key. ', "reduce":' . $reduce . '", initial":' . $initial . ', "cond":' . $condition .'})';exit;
+        echo 'db.'.$collection.'.group({"key":' . $key . ', "reduce":' . $reduce . ', "initial":' . $initial . ', "cond":' . $condition .'})' . "\n";
     }
 
     //-----------end-group----------
@@ -1115,7 +1156,7 @@ array(4) {
 }
 
 $d3 = "select a,b,sum(c) csum from coll where active=1 group by a ,b ";
-$d2 = "select a,b,c, sum(c) as cc , count(c) as dd from testa where a = 1 group by a,b, c ";
+$d2 = "select a,b,c, sum(c) as cc , count(c) as dd from testa where a != 1 and b = 2 group by a,b, c ";
 $stom = new transMongo;
 $stom->setSQL($d2);
 $stom->doTrans();
