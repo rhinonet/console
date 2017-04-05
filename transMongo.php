@@ -19,13 +19,13 @@ class transMongo{
         $sql = $this->sql;
         if(stripos($sql, 'group')){
             $this->group($sql);
-        }elseif(stripos($sql, 'select')){
+        }elseif(stripos($sql, 'select') !== false){
             $this->select($sql);
-        }elseif(stripos($sql, 'update')){
+        }elseif(stripos($sql, 'update') !== false){
             $this->update($sql);
-        }elseif(stripos($sql, 'delete')){
+        }elseif(stripos($sql, 'delete') !== false){
             $this->delete($sql);
-        }elseif(stripos($sql, 'insert')){
+        }elseif(stripos($sql, 'insert') !== false){
             $this->insert($sql);
         }else{
             $this->error('sql error error:' . __LINE__);
@@ -896,7 +896,7 @@ array(4) {
             $condition = '{}';
         }
         if(isset($sql_arr['$set']) && $sql_arr['$set']){
-            $set = ', ' . json_encode($sql_arr['$set']);
+            $set = ', ' .'{"$set":'. json_encode($sql_arr['$set']) . '}';
         }else{
             $this->error('update set error line:'.__LINE__);
         }
@@ -1275,7 +1275,7 @@ array(4) {
 }
 
 $d3 = "select a,b,sum(c) csum from coll where active=1 group by a ,b ";
-$d2 = "select a,b,c, sum(c) as cc , count(c) as dd from testa where a != 1 and b = 2 group by a,b, c ";
+$d2 = "delete from testa where a = 2";
 $stom = new transMongo;
 $stom->setSQL($d2);
 $stom->doTrans();
