@@ -3,12 +3,33 @@
 class transMongo{
     private $sql = '';
 
+    public function __construct($sql = ''){
+	$this->sql = $sql;
+    }
+
     public function setSQL($sql){
         $this->sql = $sql;
     }
 
     public function getSQL(){
         return $this->sql;
+    }
+
+    public function doTrans(){
+	$sql = $this->sql;
+	if(stripos($sql, 'group')){
+		$this->group($sql);
+	}elseif(stripos($sql, 'select')){
+		$this->select($sql);
+	}elseif(stripos($sql, 'update')){
+		$this->update($sql);
+	}elseif(stripos($sql, 'delete')){
+		$this->delete($sql);
+	}elseif(stripos($sql, 'insert')){
+		$this->insert($sql);
+	}else{
+	    $this->error('sql error error:' . __LINE__);
+	} 
     }
 
     //-----------group--------------
@@ -1097,4 +1118,4 @@ $d3 = "select a,b,sum(c) csum from coll where active=1 group by a ,b ";
 $d2 = "select a,b,c, sum(c) as cc , count(c) as dd from testa where a = 1 group by a,b, c ";
 $stom = new transMongo;
 $stom->setSQL($d2);
-$stom->group();
+$stom->doTrans();
