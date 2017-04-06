@@ -322,29 +322,6 @@ class transMongo{
 
 
     //-----------select-------------
-    public function format_select($sql){
-        $sql = preg_replace('/\s+/', ' ', $sql);
-        $sql = preg_replace('/\s*=\s*/', '=', $sql);
-        $sql = preg_replace('/\s*>\s*/', '>', $sql );
-        $sql = preg_replace('/\s*>=\s*/', '>=', $sql );
-        $sql = preg_replace('/\s*<\s*/', '<', $sql );
-        $sql = preg_replace('/\s*<=\s*/', '<=', $sql );
-        $sql = preg_replace('/\s*!=\s*/', '!=', $sql );
-
-        $sql = preg_replace_callback('/[\s]+([\w]+)[\s]+between([\w\s]+)and([\w\s]+)/', function($arr){
-            $key = isset($arr[1]) ? $arr[1] : ''; 
-            $begin = isset($arr[2]) ? $arr[2] : '';
-            $end = isset($arr[3]) ? $arr[3] : '';
-            return ' ' . trim($key) . '^' . trim($begin) . '-' . trim($end);
-        }, $sql);
-        $sql = preg_replace('/\s*and\s*/', $this->delete_split['and'], $sql);
-        $sql = preg_replace('/\s*or\s*/',  $this->delete_split['or'], $sql);
-        $sql = preg_replace('/\s*not\s+in\s*/',  $this->delete_split['nin'], $sql);
-        $sql = preg_replace('/\s*in\s*/',  $this->delete_split['in'], $sql);
-        return trim($sql);
-
-    }
-
     public function format_select_new($sql){
         $limit = $sort = $where = $table = '';
 
@@ -628,18 +605,6 @@ class transMongo{
         return $select; 
     }
 
-    private $select_split = [
-        'and' => '@',
-        'or' => '#',
-        'nin' => '$',
-        'in' => '%',
-        'between' => '^',
-        'sort' => '&',
-        'limit' => '*', 
-    ];
-
-
-
     public function select(){
         $sql = $this->sql;
         $sql_arr = $this->format_select_new($sql);
@@ -911,15 +876,6 @@ array(4) {
     //---end-update-------
 
     //------delete-------
-
-    private $delete_split = [
-        'and' => '@',
-        'or' => '#',
-        'nin' => '$',
-        'in' => '%',
-        'between' => '^', 
-    ];
-
     public function format_delete_sql($sql){
         $sql = preg_replace('/\s+/', ' ', $sql);
         $sql = preg_replace('/\s*=\s*/', '=', $sql);
@@ -947,96 +903,6 @@ array(4) {
         $format_arr['table'] = isset($tmp_arr[2]) ? $tmp_arr[2] : $this->error('Table name error line:' . __LINE__);
         $format_arr['condition'] = isset($tmp_arr[4]) ? $tmp_arr[4] : $this->error('Condition error line:' . __LINE__);
         return $format_arr;
-    }
-
-    public function combine_condition($condition){
-        if(!$condition){
-            $this->error('delete conditon error line:' . __LINE__);
-        }
-        $co = [];
-        $split = [];
-        //"a=1@b=12#b=13@c%(1,2,3)@d^1-2"
-
-        if(preg_match('/'. $this->delete_split['or'] . '/', $condition)){
-            $or_arr = explode($this->delete_split['or'], $condition);
-            if(is_array($or_arr) && count($or_arr)){
-                foreach($or_arr as $v){
-                    $and = explode($this->delete_split['and'], $v);
-                    $split['$or'][] = $and;                    
-                }
-            }
-        }else{
-            $and_arr = explode($this->delete_split['and'], $condition);
-            $split['$and'] = $and_arr;
-        }
-
-        if(isset($split['$or'])){
-            if($split['$or']){
-                foreach($split['$or'] as $key => $and){
-                    if($and){
-                        foreach($and as $v){
-                            $co['$or'][$key] = $this->do_split($v);
-                        } 
-                    }
-                }
-            } 
-        }elseif($split['$and']){
-            foreach($split['$and'] as $key => $v){
-                $co = array_merge($this->do_split($v), $co);
-            } 
-        }
-        return $co;
-    }
-
-    private function do_split($v){
-        if(stripos($v, '!=')){
-            $tmp = explode('!=', $v);
-            $key = $tmp[0];
-            $val = $tmp[1];
-            $ret[$key]['$ne'] = trim($val);
-            return $ret;
-        } elseif(stripos($v, '>=')){
-            $tmp = explode('>=', $v);
-            $key = $tmp[0];
-            $val = $tmp[1];
-            $ret[$key]['$gte'] = trim($val);
-            return $ret;
-        } elseif(stripos($v, '>')){
-            $tmp = explode('>', $v);
-            $key = $tmp[0];
-            $val = $tmp[1];
-            $ret[$key]['$gt'] = trim($val);
-            return $ret;
-        } elseif(stripos($v, '<=')){
-            $tmp = explode('<=', $v);
-            $key = $tmp[0];
-            $val = $tmp[1];
-            $ret[$key]['$lte'] = trim($val);
-            return $ret;
-        } elseif(stripos($v, '<')){
-            $tmp = explode('<', $v);
-            $key = $tmp[0];
-            $val = $tmp[1];
-            $ret[$key]['$lt'] = trim($val);
-            return $ret;
-        } elseif(stripos($v, '=')){
-            $tmp = explode('=', $v);
-            $key = $tmp[0];
-            $val = $tmp[1];
-            return [trim($key) => trim($val)];
-        } elseif(stripos($v, '%')){
-            $tmp = explode('%', $v);
-            $key = $tmp[0];
-            $val = trim($tmp[1], '(');
-            $val = explode(',', trim($val, ')'));
-            return [trim($key) => $val];
-        } elseif(stripos($v, '^')){
-            preg_match_all('/(\w+)\^(\w+)-(\w+)/', $v, $tmp);
-            $field = trim(current($tmp[1]));
-            $ret[$field]['$gt'] = trim(current($tmp[2]));
-            $ret[$field]['$lt'] = trim(current($tmp[3]));
-            return [$field => $ret[$field]];
-        }
     }
 
     private function format_delete_sql_new($sql){
