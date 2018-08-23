@@ -50,7 +50,7 @@ function encodeEmoji($text){
 }
 
 function decodeEmoji($text){
-    $ret = preg_replace_callback('/(%[0-9A-F][0-9A-F]){4}/', function($match)use(&$i){
+    $ret = preg_replace_callback('/(%[0-9A-F][0-9A-F]){3,}/', function($match)use(&$i){
         return urldecode($match[0]);
     }, $text);
     return $ret;
